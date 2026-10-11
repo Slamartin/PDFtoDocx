@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF to Word Desk</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* Two-column work desk. Left: intake and options. Right: the file queue with per-file results. Stacks on phones. */
+  :root {
+    --bg: #F2F4F7; --panel: #FFFFFF; --fg: #1A2230; --muted: #5B6778; --line: #D6DCE5; --drop: #E9EEF5;
+    --accent: #1F5C8A; --accent-fg: #FFFFFF; --accent-soft: #DCE9F4;
+    --ok: #27724A; --ok-soft: #DDF0E4; --warn: #9A5E12; --warn-soft: #F7E8CF; --err: #A83535; --err-soft: #F6DCDC;
+    --track: #E3E8EF;
+    --font-ui: "Manrope", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-data: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10151C; --panel: #181F29; --fg: #E5EAF1; --muted: #98A4B5; --line: #2A3441; --drop: #1E2733;
+      --accent: #6DB0E2; --accent-fg: #0D1821; --accent-soft: #1C3246;
+      --ok: #5FC08A; --ok-soft: #173224; --warn: #E2A553; --warn-soft: #3A2A12; --err: #E27676; --err-soft: #3C1D1D;
+      --track: #273140; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #10151C; --panel: #181F29; --fg: #E5EAF1; --muted: #98A4B5; --line: #2A3441; --drop: #1E2733;
+    --accent: #6DB0E2; --accent-fg: #0D1821; --accent-soft: #1C3246;
+    --ok: #5FC08A; --ok-soft: #173224; --warn: #E2A553; --warn-soft: #3A2A12; --err: #E27676; --err-soft: #3C1D1D;
+    --track: #273140; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 15px; line-height: 1.5; padding: 24px 16px 48px; }
+  .wrap { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 20px; }
+  header h1 { margin: 0; font-size: 1.6rem; font-weight: 800; letter-spacing: -0.01em; }
+  header p { margin: 0; color: var(--muted); max-width: 60ch; }
+  .tag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; }
+  .tag.off { background: var(--err-soft); color: var(--err); }
+  .tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+  .desk { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .desk { grid-template-columns: minmax(0, 1fr); } }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; }
+  .panel h2 { margin: 0 0 12px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+  .dropzone { border: 2px dashed var(--line); border-radius: 10px; background: var(--drop); padding: 28px 18px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; outline: none; }
+  .dropzone:hover, .dropzone:focus-visible, .dropzone.over { border-color: var(--accent); background: var(--accent-soft); }
+  .dropzone strong { display: block; font-size: 1.05rem; font-weight: 700; }
+  .dropzone span { color: var(--muted); font-size: 0.9rem; }
+  .dropzone input { display: none; }
+
+  fieldset { border: 0; padding: 0; margin: 18px 0 0; display: flex; flex-direction: column; gap: 10px; }
+  legend { font-weight: 700; font-size: 0.9rem; margin-bottom: 8px; padding: 0; }
+  label.inline { display: inline-flex; gap: 8px; align-items: flex-start; cursor: pointer; font-size: 0.92rem; }
+  label.inline input { accent-color: var(--accent); margin-top: 4px; }
+  label.inline small { display: block; color: var(--muted); font-size: 0.85rem; }
+
+  button { font: inherit; font-weight: 700; border-radius: 8px; border: 1px solid var(--line); padding: 8px 14px; background: var(--panel); color: var(--fg); cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.primary, a.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  a.primary { display: inline-block; font-weight: 700; border-radius: 8px; border: 1px solid var(--accent); padding: 8px 14px; text-decoration: none; }
+  a.primary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.quiet { border-color: transparent; color: var(--muted); padding: 6px 8px; font-weight: 600; }
+  button.quiet:hover { color: var(--fg); border-color: var(--line); }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+
+  .queue { display: flex; flex-direction: column; gap: 12px; }
+  .empty { color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+  .empty ul { margin: 8px 0 0; padding-left: 18px; }
+
+  .job { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .job-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+  .job-name { font-weight: 700; min-width: 0; overflow-wrap: anywhere; flex: 1 1 200px; }
+  .kind { font-family: var(--font-data); font-size: 0.75rem; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; }
+  .pill { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 9px; border-radius: 999px; background: var(--track); color: var(--muted); white-space: nowrap; }
+  .pill.working { background: var(--accent-soft); color: var(--accent); }
+  .pill.done { background: var(--ok-soft); color: var(--ok); }
+  .pill.failed { background: var(--err-soft); color: var(--err); }
+  .pill.locked { background: var(--warn-soft); color: var(--warn); }
+  .bar { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; position: relative; }
+  .bar i { position: absolute; inset: 0; width: 35%; background: var(--accent); border-radius: 3px; animation: slide 1.2s ease-in-out infinite; }
+  @keyframes slide { 0% { left: -35%; } 100% { left: 100%; } }
+  .stats { display: flex; flex-wrap: wrap; gap: 4px 16px; font-family: var(--font-data); font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .stats b { color: var(--fg); font-weight: 500; }
+  .notes { margin: 0; padding-left: 18px; font-size: 0.88rem; color: var(--muted); }
+  .notes li.warn { color: var(--warn); }
+  .notes li.err { color: var(--err); }
+  .job-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .pw { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .pw input { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--fg); min-width: 0; flex: 1 1 160px; }
+  .pw input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 0.9rem; max-width: calc(100vw - 32px); opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .toast.show { opacity: 1; }
+
+  .fine { font-size: 0.85rem; color: var(--muted); }
+  .fine h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 6px; color: var(--muted); }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .cols ul { margin: 0; padding-left: 18px; }
+  @media (prefers-reduced-motion: reduce) { .bar i { animation: none; width: 100%; left: 0; opacity: .5; } .dropzone, .toast { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>PDF to Word Desk</h1>
+    <span class="tag" id="serverTag">Runs on this PC</span>
+    <p>Drop PDF or PowerPoint files, get .docx files. The local server converts them and deletes the results after an hour.</p>
+  </header>
+
+  <div class="desk">
+    <section class="panel">
+      <h2>Convert</h2>
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose PDF or PPTX files">
+        <strong>Drop PDF or PPTX files here</strong>
+        <span>or click to choose. Several files at once are fine.</span>
+        <input id="fileInput" type="file" accept=".pdf,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation" multiple>
+      </div>
+
+      <fieldset>
+        <legend>Options</legend>
+        <label class="inline">
+          <input type="checkbox" id="optNotes">
+          <span>Include speaker notes <small>PowerPoint only. Notes go under each slide as italic text.</small></span>
+        </label>
+      </fieldset>
+
+      <div class="actions">
+        <button id="retryAll" disabled>Retry failed</button>
+        <button id="clearAll" disabled>Clear list</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Files</h2>
+      <div id="queue" class="queue">
+        <div class="empty" id="emptyState">
+          No files yet. Each converted file appears here with a Save button, counts of pages, tables and images, and notes about anything that did not convert cleanly.
+          <ul>
+            <li>PDF: paragraphs, fonts, tables, images and columns are rebuilt from the page layout.</li>
+            <li>PPTX: every slide becomes one page with an editable title, text, tables and pictures.</li>
+            <li>Scanned pages have no text layer and are kept as pictures. No OCR is applied.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel fine">
+    <div class="cols">
+      <div>
+        <h3>Converts well</h3>
+        <ul>
+          <li>PDF text with fonts, sizes, colours, bold and italic</li>
+          <li>PDF tables, images, multi-column text, page size and margins</li>
+          <li>PPTX titles, bullets, fonts and colours from the theme, filled boxes, tables with merged cells, pictures</li>
+          <li>Password-protected PDFs (you will be asked for the password)</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Converts poorly</h3>
+        <ul>
+          <li>Scanned PDFs stay pictures; no OCR</li>
+          <li>PDF hyperlinks, footnotes and form fields become plain text</li>
+          <li>PPTX charts, SmartArt and embedded objects become a placeholder line; EMF/WMF/SVG pictures are skipped</li>
+          <li>PPTX backgrounds, layout artwork, animations and transitions are dropped; side-by-side shapes become columns</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var jobs = [];          // { id, file, kind, status, result, notes, password, el }
+  var nextId = 1;
+  var running = false;
+
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3200);
+  }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function refreshButtons() {
+    $('retryAll').disabled = running || !jobs.some(function (j) { return j.status === 'failed'; });
+    $('clearAll').disabled = running || jobs.length === 0;
+    $('emptyState').hidden = jobs.length > 0;
+  }
+
+  function renderJob(job) {
+    var root = job.el;
+    root.textContent = '';
+
+    var head = el('div', 'job-head');
+    head.appendChild(el('div', 'job-name', job.file.name));
+    head.appendChild(el('span', 'kind', job.kind.toUpperCase()));
+    var pillCls = { queued: '', working: 'working', done: 'done', failed: 'failed', locked: 'locked' }[job.status];
+    var pillText = { queued: 'Queued', working: 'Converting', done: 'Ready', failed: 'Failed', locked: 'Needs password' }[job.status];
+    head.appendChild(el('span', 'pill ' + pillCls, pillText));
+    root.appendChild(head);
+
+    if (job.status === 'working') {
+      var bar = el('div', 'bar');
+      bar.appendChild(el('i'));
+      root.appendChild(bar);
+    }
+
+    var stats = el('div', 'stats');
+    function stat(label, value) {
+      var s = el('span');
+      s.appendChild(el('b', null, String(value)));
+      s.appendChild(document.createTextNode(' ' + label));
+      stats.appendChild(s);
+    }
+    stat('KB in', Math.max(1, Math.round(job.file.size / 1024)));
+    if (job.result) {
+      var r = job.result.report;
+      stat(job.kind === 'pptx' ? 'slides' : 'pages', r.pages);
+      stat('tables', r.tables);
+      stat('images', r.images);
+      stat('KB out', Math.max(1, Math.round(job.result.size / 1024)));
+    }
+    root.appendChild(stats);
+
+    var items = job.notes.slice();
+    if (job.result) {
+      job.result.report.warnings.forEach(function (w) { items.push({ level: 'warn', text: w }); });
+      job.result.report.notes.forEach(function (n) { items.push({ level: '', text: n }); });
+    }
+    if (items.length) {
+      var ul = el('ul', 'notes');
+      items.forEach(function (n) { ul.appendChild(el('li', n.level, n.text)); });
+      root.appendChild(ul);
+    }
+
+    if (job.status === 'locked') {
+      var pw = el('form', 'pw');
+      var input = el('input');
+      input.type = 'password';
+      input.id = 'pw-' + job.id;
+      input.placeholder = 'PDF password';
+      input.setAttribute('aria-label', 'Password for ' + job.file.name);
+      var go = el('button', 'primary', 'Unlock and convert');
+      go.type = 'submit';
+      pw.appendChild(input);
+      pw.appendChild(go);
+      pw.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        job.password = input.value;
+        requeue(job);
+      });
+      root.appendChild(pw);
+      setTimeout(function () { input.focus(); }, 0);
+    }
+
+    var actions = el('div', 'job-actions');
+    if (job.status === 'done' && job.result) {
+      var save = el('a', 'primary', 'Save .docx');
+      save.href = '/api/result/' + encodeURIComponent(job.result.id);
+      save.download = job.result.filename;
+      actions.appendChild(save);
+    }
+    if (job.status === 'failed') {
+      var retry = el('button', null, 'Retry');
+      retry.addEventListener('click', function () { requeue(job); });
+      actions.appendChild(retry);
+    }
+    if (job.status !== 'working') {
+      var rm = el('button', 'quiet', 'Remove');
+      rm.addEventListener('click', function () {
+        jobs = jobs.filter(function (j) { return j !== job; });
+        root.remove();
+        refreshButtons();
+      });
+      actions.appendChild(rm);
+    }
+    root.appendChild(actions);
+    refreshButtons();
+  }
+
+  function requeue(job) {
+    job.status = 'queued';
+    job.notes = [];
+    job.result = null;
+    renderJob(job);
+    runQueue();
+  }
+
+  function kindOf(file) {
+    if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') return 'pdf';
+    if (/\.pptx$/i.test(file.name)) return 'pptx';
+    return null;
+  }
+
+  function addFiles(list) {
+    var added = 0;
+    Array.prototype.forEach.call(list, function (file) {
+      var kind = kindOf(file);
+      if (!kind) { toast('Skipped ' + file.name + ': only PDF and PPTX are supported'); return; }
+      var job = { id: nextId++, file: file, kind: kind, status: 'queued', result: null, notes: [], password: undefined, el: el('div', 'job') };
+      jobs.push(job);
+      $('queue').appendChild(job.el);
+      renderJob(job);
+      added++;
+    });
+    if (added) runQueue();
+  }
+
+  /* ---------- intake ---------- */
+  var dz = $('dropzone');
+  var fileInput = $('fileInput');
+  dz.addEventListener('click', function () { fileInput.click(); });
+  dz.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
+  fileInput.addEventListener('change', function () { addFiles(fileInput.files); fileInput.value = ''; });
+  ['dragenter', 'dragover'].forEach(function (t) { dz.addEventListener(t, function (e) { e.preventDefault(); dz.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function (t) { dz.addEventListener(t, function (e) { e.preventDefault(); dz.classList.remove('over'); }); });
+  dz.addEventListener('drop', function (e) { if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); });
+  document.addEventListener('dragover', function (e) { e.preventDefault(); });
+  document.addEventListener('drop', function (e) { e.preventDefault(); });
+
+  $('retryAll').addEventListener('click', function () {
+    jobs.forEach(function (j) { if (j.status === 'failed') { j.status = 'queued'; j.notes = []; renderJob(j); } });
+    runQueue();
+  });
+  $('clearAll').addEventListener('click', function () {
+    jobs.forEach(function (j) { j.el.remove(); });
+    jobs = [];
+    refreshButtons();
+  });
+
+  /* ---------- queue runner ---------- */
+  function runQueue() {
+    if (running) { refreshButtons(); return; }
+    var job = jobs.find(function (j) { return j.status === 'queued'; });
+    if (!job) { refreshButtons(); return; }
+    running = true;
+    job.status = 'working';
+    renderJob(job);
+    convert(job).then(function (result) {
+      job.result = result;
+      job.status = 'done';
+    }).catch(function (err) {
+      if (err && err.code === 'password') {
+        job.status = 'locked';
+        job.notes = [{ level: 'warn', text: job.password !== undefined ? 'That password did not open the file.' : 'This PDF is password protected.' }];
+      } else {
+        job.status = 'failed';
+        job.notes = [{ level: 'err', text: 'Could not convert: ' + ((err && err.message) || String(err)) }];
+      }
+    }).then(function () {
+      running = false;
+      renderJob(job);
+      runQueue();
+    });
+  }
+
+  function convert(job) {
+    var form = new FormData();
+    form.append('file', job.file, job.file.name);
+    if (job.password) form.append('password', job.password);
+    form.append('notes', $('optNotes').checked ? 'true' : 'false');
+    return fetch('/api/convert', { method: 'POST', body: form }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (body) {
+        if (res.ok) return body;
+        var e = new Error(body.detail || ('server replied ' + res.status));
+        if (res.status === 401 && body.error === 'password') e.code = 'password';
+        throw e;
+      });
+    }, function () {
+      $('serverTag').textContent = 'Server not reachable';
+      $('serverTag').classList.add('off');
+      throw new Error('the local server is not running. Start run.ps1 and retry.');
+    });
+  }
+
+  refreshButtons();
+})();
+</script>
+</body>
+</html>
