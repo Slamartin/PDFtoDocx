@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy and terms</title>
+<style>
+  :root { --bg: #F2F4F7; --panel: #FFFFFF; --fg: #1A2230; --muted: #5B6778; --line: #D6DCE5; --accent: #1F5C8A; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #10151C; --panel: #181F29; --fg: #E5EAF1; --muted: #98A4B5; --line: #2A3441; --accent: #6DB0E2; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --bg: #10151C; --panel: #181F29; --fg: #E5EAF1; --muted: #98A4B5; --line: #2A3441; --accent: #6DB0E2; color-scheme: dark; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: "Segoe UI", system-ui, -apple-system, sans-serif; font-size: 15px; line-height: 1.55; padding: 24px 16px 48px; }
+  main { max-width: 720px; margin: 0 auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 24px; }
+  h1 { margin: 0 0 4px; font-size: 1.5rem; }
+  h2 { font-size: 1.05rem; margin: 22px 0 6px; }
+  p, li { color: var(--fg); }
+  .muted { color: var(--muted); }
+  a { color: var(--accent); }
+  ul { padding-left: 20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Privacy and terms</h1>
+  <p class="muted">PDF / PPTX to Word converter. <a href="/">Back to the converter</a></p>
+
+  <h2>What happens to your files</h2>
+  <ul>
+    <li>The file you upload is written to a temporary folder on the server only for the duration of the conversion and is deleted as soon as the conversion ends, whether it succeeded or not.</li>
+    <li>The converted .docx is kept so you can download it, for at most the retention time shown on the main page (usually 15 minutes). It is deleted after that, or sooner if the server restarts or stops when idle.</li>
+    <li>Files are never copied anywhere else, never inspected by a person and never used to train anything.</li>
+    <li>If a PDF needs a password, the password is used only to open that file during the conversion. It is not stored or logged.</li>
+  </ul>
+
+  <h2>What is logged</h2>
+  <ul>
+    <li>Your IP address is kept in memory to enforce the per-address rate limits and appears in server request logs.</li>
+    <li>Failed conversions are logged with a job id, the file type and the error category. File names and file contents are not logged.</li>
+    <li>No cookies, no accounts, no analytics and no requests to third-party services from the page.</li>
+  </ul>
+
+  <h2>Limits and fair use</h2>
+  <p>The service is free and runs on a small machine. Uploads are capped in size and page count, one file converts at a time, and each address gets a limited number of conversions per minute and per day. Addresses that abuse the service may be blocked.</p>
+
+  <h2>No warranty</h2>
+  <p>The converter is provided as is, without any warranty. Conversion quality depends on the input; always check the result before relying on it. Do not upload files you are not allowed to process on a third-party server.</p>
+
+  <h2>Open source</h2>
+  <p>The service is free software under the GNU Affero General Public License v3. You can inspect, run and modify it; the source code link is in the footer of the main page. It builds on PyMuPDF, pdf2docx, python-pptx and python-docx.</p>
+</main>
+</body>
+</html>

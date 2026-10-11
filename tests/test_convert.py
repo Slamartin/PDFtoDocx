@@ -11,19 +11,7 @@ from app.converters.pdf_to_docx import convert_pdf
 from app.converters.pptx_to_docx import convert_pptx
 from app.main import app
 from app.report import PasswordError
-from tests.make_fixtures import FIX, make_pdf, make_pptx
-
-
-@pytest.fixture(scope="session", autouse=True)
-def fixtures():
-    FIX.mkdir(exist_ok=True)
-    if not (FIX / "sample.pdf").exists():
-        make_pdf(FIX / "sample.pdf")
-    if not (FIX / "locked.pdf").exists():
-        make_pdf(FIX / "locked.pdf", password="secret")
-    if not (FIX / "sample.pptx").exists():
-        make_pptx(FIX / "sample.pptx")
-    (FIX / "not-a-doc.txt").write_text("hello")
+from tests.make_fixtures import FIX
 
 
 def _all_tables(d):

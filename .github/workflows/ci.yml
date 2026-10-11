@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run python tests/make_fixtures.py
+      - run: uv run pytest -q
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Build image
+        run: docker build -t pdftoword .
+      - name: Generate a fixture for the smoke test
+        run: uv sync --locked && uv run python tests/make_fixtures.py
+      - name: Smoke test the container
+        run: |
+          docker run -d --name pdftoword -p 8080:8080 pdftoword
+          for i in $(seq 1 30); do curl -fs http://localhost:8080/healthz && break; sleep 1; done
+          curl -fs http://localhost:8080/healthz
+          curl -fs -o /tmp/convert.json -F file=@tests/fixtures/sample.pdf http://localhost:8080/api/convert
+          cat /tmp/convert.json
+          python3 -c "import json; d=json.load(open('/tmp/convert.json')); assert d['report']['pages']==2, d"
+          docker logs pdftoword
+          docker rm -f pdftoword
+
+  deploy:
+    # Runs only on main after tests and the image build pass. Needs the FLY_API_TOKEN secret.
+    needs: [test, docker]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    concurrency: deploy-group
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

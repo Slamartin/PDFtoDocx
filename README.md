@@ -1,9 +1,16 @@
 # PDF / PPTX to Word
 
-Local web app that turns PDF and PowerPoint files into editable Word documents.
-Nothing leaves your machine: a small Python server converts the files and the browser page is only the front end.
+Web app that turns PDF and PowerPoint files into editable Word documents.
+A Python server does the conversion; the browser page is only the front end.
 
-## Run
+It runs in two profiles:
+
+- **Local**: start it on your own PC, nothing leaves your machine.
+- **Hosted**: the same code behind a public URL, with upload caps, rate limits, a conversion timeout and
+  short result retention. Files are deleted right after conversion; results expire after 15 minutes.
+  See [privacy and terms](app/static/privacy.html).
+
+## Run locally
 
 Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
@@ -13,7 +20,7 @@ Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
 This installs dependencies, starts the server on http://127.0.0.1:8765 and opens the page.
 Drop files on the page, wait for the "Ready" badge, click **Save .docx**.
-Converted files are kept in the temp folder for one hour, then deleted.
+On Linux or macOS: `uv sync && uv run uvicorn app.main:app --host 127.0.0.1 --port 8765`.
 
 ## What it does
 
@@ -31,9 +38,73 @@ Converted files are kept in the temp folder for one hour, then deleted.
 - Exact slide positions cannot be reproduced in a flowing Word document; vertical gaps and side-by-side columns approximate them.
 - Password-protected PDFs are supported; the page asks for the password.
 
+## How the hosted profile protects itself
+
+- Every conversion runs in its own worker process (`app/worker.py`) with a wall-clock timeout and, on
+  Linux, a memory limit. A crash inside MuPDF or OpenCV kills only that job.
+- One conversion runs at a time; a few requests may wait, the rest get `503` with `Retry-After`.
+- Uploads are capped before the body is read (`413`), and PDFs/PPTX files over the page or slide cap are
+  rejected after a cheap inspection, before the full conversion.
+- Per-IP token buckets (per minute and per day) on the convert endpoint return `429` with `Retry-After`.
+- Error responses are generic; library error text goes to the server log with a job id only.
+- The page makes no third-party requests, sets no cookies and has no analytics.
+
+## Configuration
+
+All settings are environment variables with defaults (`app/config.py`). The Docker image sets the public
+profile; the local launcher uses the defaults.
+
+| Variable | Default | Docker | Meaning |
+|---|---|---|---|
+| `HOST` / `PORT` | `127.0.0.1` / `8765` | `0.0.0.0` / `8080` | bind address |
+| `MAX_UPLOAD_BYTES` | 25 MB | 25 MB | upload cap |
+| `MAX_PAGES` / `MAX_SLIDES` | 80 / 80 | 80 / 80 | page and slide caps |
+| `CONVERT_TIMEOUT_S` | 90 | 90 | worker wall clock |
+| `WORKER_MEMORY_MB` | 0 (off) | 700 | RLIMIT for the worker, POSIX only |
+| `QUEUE_MAX_WAITING` / `QUEUE_WAIT_TIMEOUT_S` | 3 / 60 | 3 / 60 | queue depth and max wait |
+| `RESULT_TTL_S` / `CLEANUP_INTERVAL_S` | 900 / 60 | 900 / 60 | result retention |
+| `RATE_PER_MINUTE` / `RATE_BURST` / `RATE_DAILY` | 0 (off) / 5 / 40 | 2 / 5 / 40 | per-IP limits; `0` disables |
+| `TRUSTED_PROXY` | 0 | 1 | trust `Fly-Client-IP` / `X-Forwarded-For` |
+| `WORK_DIR` | `<tmp>/pdftoword` | `/tmp/pdftoword` | job folders |
+| `PUBLIC` | 0 | 1 | hosted wording in the UI |
+| `SOURCE_URL` | GitHub URL | | footer link |
+| `LOG_LEVEL` | `INFO` | | |
+
+## Self-host with Docker
+
+```sh
+docker build -t pdftoword .
+docker run --rm -p 8080:8080 -e MAX_UPLOAD_BYTES=52428800 pdftoword
+```
+
+## Deploy on Fly.io
+
+The repo contains `fly.toml` (one `shared-cpu-1x` machine with 1 GB, stops when idle). Images are built
+on Fly's remote builder, so Docker is not needed locally.
+
+```sh
+fly launch --no-deploy --copy-config   # pick an app name and region
+fly deploy --remote-only
+fly scale count 1
+fly logs
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the tests, builds and smoke-tests the image on every
+push, and deploys `main` when the `FLY_API_TOKEN` repository secret is set.
+
+Things to check after the first deploy: that a 90 s conversion is not cut by the Fly proxy (lower
+`CONVERT_TIMEOUT_S` if it is), and the worker's real memory need (`fly logs` shows `worker crashed rc=-9`
+when `WORKER_MEMORY_MB` or the machine is too small).
+
 ## Tests
 
 ```powershell
 uv run python tests/make_fixtures.py
 uv run pytest
 ```
+
+## Licence
+
+AGPL-3.0-only (see `LICENSE`). The PDF path depends on [PyMuPDF](https://pymupdf.readthedocs.io/) and
+[pdf2docx](https://github.com/ArtifexSoftware/pdf2docx), which are AGPL/GPL licensed; anyone who runs
+this as a network service must offer its source to the users, which the page's footer link does.

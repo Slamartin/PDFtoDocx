@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PDF to Word Desk</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
   /* Two-column work desk. Left: intake and options. Right: the file queue with per-file results. Stacks on phones. */
   :root {
@@ -12,8 +11,9 @@
     --accent: #1F5C8A; --accent-fg: #FFFFFF; --accent-soft: #DCE9F4;
     --ok: #27724A; --ok-soft: #DDF0E4; --warn: #9A5E12; --warn-soft: #F7E8CF; --err: #A83535; --err-soft: #F6DCDC;
     --track: #E3E8EF;
-    --font-ui: "Manrope", "Segoe UI", system-ui, -apple-system, sans-serif;
-    --font-data: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+    /* System fonts only: the page makes no third-party requests. */
+    --font-ui: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+    --font-data: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -99,6 +99,8 @@
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 0.9rem; max-width: calc(100vw - 32px); opacity: 0; pointer-events: none; transition: opacity .2s; }
   .toast.show { opacity: 1; }
 
+  footer { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.85rem; color: var(--muted); }
+  footer a { color: var(--accent); }
   .fine { font-size: 0.85rem; color: var(--muted); }
   .fine h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 6px; color: var(--muted); }
   .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
@@ -111,7 +113,7 @@
   <header>
     <h1>PDF to Word Desk</h1>
     <span class="tag" id="serverTag">Runs on this PC</span>
-    <p>Drop PDF or PowerPoint files, get .docx files. The local server converts them and deletes the results after an hour.</p>
+    <p id="intro">Drop PDF or PowerPoint files, get .docx files. Converted files are deleted after a short while.</p>
   </header>
 
   <div class="desk">
@@ -174,6 +176,12 @@
       </div>
     </div>
   </section>
+
+  <footer>
+    <span id="limitsLine">Limits are loading.</span>
+    <a href="/privacy">Privacy and terms</a>
+    <a id="sourceLink" href="https://github.com/martinslama/pdftoword" rel="noopener">Source code (AGPL-3.0)</a>
+  </footer>
 </div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -183,9 +191,34 @@
   'use strict';
 
   var $ = function (id) { return document.getElementById(id); };
-  var jobs = [];          // { id, file, kind, status, result, notes, password, el }
+  var jobs = [];          // { id, file, kind, status, result, notes, password, retries, el }
   var nextId = 1;
   var running = false;
+  var limits = null;      // from /api/limits; null until loaded
+  var MAX_RETRIES = 4;    // automatic retries after 429 / 503 per file
+
+  /* ---------- server limits ---------- */
+  function fmtMb(bytes) { return Math.round(bytes / (1024 * 1024)); }
+  function fmtMinutes(s) { return s >= 120 ? Math.round(s / 60) + ' minutes' : Math.round(s) + ' seconds'; }
+
+  function applyLimits(l) {
+    limits = l;
+    if (l.public) {
+      $('serverTag').textContent = 'Hosted service';
+      $('intro').textContent = 'Drop PDF or PowerPoint files, get .docx files. Files are converted on the server and deleted after ' + fmtMinutes(l.result_ttl_s) + '.';
+    } else {
+      $('intro').textContent = 'Drop PDF or PowerPoint files, get .docx files. The local server converts them and deletes the results after ' + fmtMinutes(l.result_ttl_s) + '.';
+    }
+    var parts = ['Up to ' + fmtMb(l.max_upload_bytes) + ' MB and ' + Math.max(l.max_pages, l.max_slides) + ' pages per file'];
+    if (l.rate_per_minute > 0) parts.push(l.rate_per_minute + ' conversions per minute, ' + l.rate_daily + ' per day');
+    parts.push('results kept ' + fmtMinutes(l.result_ttl_s));
+    $('limitsLine').textContent = parts.join('. ') + '.';
+    if (l.source_url) $('sourceLink').href = l.source_url;
+  }
+
+  fetch('/api/limits').then(function (r) { return r.json(); }).then(applyLimits).catch(function () {
+    $('limitsLine').textContent = '';
+  });
 
   var toastTimer = null;
   function toast(msg) {
@@ -319,7 +352,8 @@
     Array.prototype.forEach.call(list, function (file) {
       var kind = kindOf(file);
       if (!kind) { toast('Skipped ' + file.name + ': only PDF and PPTX are supported'); return; }
-      var job = { id: nextId++, file: file, kind: kind, status: 'queued', result: null, notes: [], password: undefined, el: el('div', 'job') };
+      if (limits && file.size > limits.max_upload_bytes) { toast('Skipped ' + file.name + ': larger than ' + fmtMb(limits.max_upload_bytes) + ' MB'); return; }
+      var job = { id: nextId++, file: file, kind: kind, status: 'queued', result: null, notes: [], password: undefined, retries: 0, el: el('div', 'job') };
       jobs.push(job);
       $('queue').appendChild(job.el);
       renderJob(job);
@@ -358,13 +392,22 @@
     running = true;
     job.status = 'working';
     renderJob(job);
+    var retryIn = 0;
     convert(job).then(function (result) {
       job.result = result;
       job.status = 'done';
+      job.retries = 0;
     }).catch(function (err) {
       if (err && err.code === 'password') {
         job.status = 'locked';
         job.notes = [{ level: 'warn', text: job.password !== undefined ? 'That password did not open the file.' : 'This PDF is password protected.' }];
+      } else if (err && err.code === 'retry' && job.retries < MAX_RETRIES) {
+        // Rate limited or server busy: keep the job queued and try again after the server's delay.
+        job.retries++;
+        retryIn = err.retryAfter;
+        job.status = 'queued';
+        job.notes = [{ level: 'warn', text: err.message + ' Retrying in ' + retryIn + ' s.' }];
+        toast(err.message + ' Retrying in ' + retryIn + ' s.');
       } else {
         job.status = 'failed';
         job.notes = [{ level: 'err', text: 'Could not convert: ' + ((err && err.message) || String(err)) }];
@@ -372,7 +415,7 @@
     }).then(function () {
       running = false;
       renderJob(job);
-      runQueue();
+      if (retryIn) setTimeout(runQueue, retryIn * 1000); else runQueue();
     });
   }
 
@@ -386,12 +429,18 @@
         if (res.ok) return body;
         var e = new Error(body.detail || ('server replied ' + res.status));
         if (res.status === 401 && body.error === 'password') e.code = 'password';
+        if (res.status === 429 || res.status === 503) {
+          e.code = 'retry';
+          var after = parseInt(res.headers.get('Retry-After'), 10);
+          e.retryAfter = Math.min(120, Math.max(3, isNaN(after) ? 15 : after));
+          e.message = res.status === 429 ? 'Too many conversions from your address.' : 'The server is busy.';
+        }
         throw e;
       });
     }, function () {
       $('serverTag').textContent = 'Server not reachable';
       $('serverTag').classList.add('off');
-      throw new Error('the local server is not running. Start run.ps1 and retry.');
+      throw new Error(limits && limits.public ? 'the server is not reachable. Check your connection and retry.' : 'the local server is not running. Start run.ps1 and retry.');
     });
   }
 
