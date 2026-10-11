@@ -96,6 +96,13 @@ Things to check after the first deploy: that a 90 s conversion is not cut by the
 `CONVERT_TIMEOUT_S` if it is), and the worker's real memory need (`fly logs` shows `worker crashed rc=-9`
 when `WORKER_MEMORY_MB` or the machine is too small).
 
+Measured in the image (python 3.14-slim, one CPU): the server process idles at about 57 MB; the worker
+imports pdf2docx with 114 MB of data segment and converts a 23-page, 148-image PDF with a 273 MB peak
+under the 700 MB `RLIMIT_DATA`. The thread variables the server passes to the worker
+(`OMP_NUM_THREADS=1`, `OPENBLAS_NUM_THREADS=1`, `OPENCV_FOR_THREADS_NUM=1`, `MALLOC_ARENA_MAX=2`) are
+what make this possible: without them OpenBLAS and OpenCV reserve about 2.8 GB at import and the limit
+kills the import.
+
 ## Tests
 
 ```powershell
