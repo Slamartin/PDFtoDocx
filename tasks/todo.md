@@ -1,0 +1,259 @@
+# Tasks: PDFtoWord launch
+
+Plan: `tasks/plan.md`. Spec: `SPEC.md`. Check boxes as tasks complete.
+
+## Task 1: Commit SPEC.md and the plan, mark the spec approved
+
+**Description:** Put the approved spec and this plan under version control so later sessions and CI
+have them. Change the spec's status line from draft to approved with the date.
+
+**Acceptance criteria:**
+- [x] `SPEC.md` status line reads "approved 2026-10-12"
+- [x] `SPEC.md`, `tasks/plan.md`, `tasks/todo.md` are committed on `main`
+
+**Verification:**
+- [x] `git log --oneline -1` shows the commit; `git status` clean
+
+**Dependencies:** None
+
+**Files likely touched:** `SPEC.md`, `tasks/plan.md`, `tasks/todo.md`
+
+**Estimated scope:** XS
+
+---
+
+## Task 2: Add ruff, fix findings, run it in CI
+
+**Description:** Add ruff as a dev dependency with the spec's configuration, format the code, fix lint
+findings without changing behaviour, and run both checks in the CI `test` job. Two commits: format first,
+lint fixes second, so the behaviour-neutral reflow is isolated. CI edit is ask-first per the spec; the
+spec approval covers it, but say so in the commit.
+
+**Acceptance criteria:**
+- [ ] `pyproject.toml` has `ruff` in the dev group and `[tool.ruff]` with `line-length = 120` and
+      `extend-select = ["I"]`
+- [ ] `uv run ruff check .` and `uv run ruff format --check .` exit 0
+- [ ] `.github/workflows/ci.yml` runs both checks before pytest
+- [ ] `uv run pytest -q` still passes (26 tests)
+
+**Verification:**
+- [ ] Tests pass: `uv run pytest -q`
+- [ ] Lint clean: `uv run ruff check . && uv run ruff format --check .`
+- [ ] Manual check: `git diff --stat` of the format commit touches no test assertions
+
+**Dependencies:** Task 1
+
+**Files likely touched:** `pyproject.toml`, `uv.lock`, `.github/workflows/ci.yml`, formatted files under
+`app/` and `tests/`
+
+**Estimated scope:** M
+
+---
+
+## Task 3: Replace the placeholder repository URL
+
+**Description:** Put the real GitHub URL (from Martin) into every place that carries the placeholder
+`https://github.com/martinslama/pdftoword`.
+
+**Acceptance criteria:**
+- [ ] `grep -r "martinslama/pdftoword"` returns nothing
+- [ ] `app/config.py` default, `fly.toml` `[env]`, `pyproject.toml` `[project.urls]`, and the
+      `index.html` footer fallback all show the real URL
+- [ ] `GET /api/limits` returns the real URL
+
+**Verification:**
+- [ ] Tests pass: `uv run pytest -q tests/test_api_limits.py -k limit_endpoint`
+- [ ] Manual check: start the server, footer link points to the repo
+
+**Dependencies:** Task 1 (needs the repo name decision)
+
+**Files likely touched:** `app/config.py`, `fly.toml`, `pyproject.toml`, `app/static/index.html`
+
+**Estimated scope:** S
+
+---
+
+## Checkpoint 1: Clean local repo
+- [ ] `uv run pytest -q` passes
+- [ ] `uv run ruff check .` and `uv run ruff format --check .` clean
+- [ ] Decide: keep charging a rate-limit token on 413 (current) or reorder the middlewares
+- [ ] Review with Martin before publishing
+
+---
+
+## Task 4: Create the GitHub repo, push `main`, get CI green (manual)
+
+**Description:** Martin creates a public repository on GitHub (browser or `gh repo create`). The agent
+adds the remote, pushes `main`, and watches the first CI run. The `docker` job is the first time the
+image builds on Linux CI; the `deploy` job will fail until Task 9 and that is expected.
+
+**Acceptance criteria:**
+- [ ] `git remote -v` shows `origin` on GitHub; `main` pushed
+- [ ] CI `test` job green; CI `docker` job green (container converts `sample.pdf`)
+- [ ] Repository visibility is public; GitHub shows the AGPL-3.0 licence badge
+
+**Verification:**
+- [ ] Manual check: GitHub Actions page shows green for `test` and `docker`
+- [ ] Manual check: opening the footer link from the local page lands on the repo
+
+**Dependencies:** Task 3
+
+**Files likely touched:** none (git remote only)
+
+**Estimated scope:** XS
+
+---
+
+## Checkpoint 2: Public source
+- [ ] CI green for `test` and `docker`
+- [ ] Source link works; AGPL obligation met
+
+---
+
+## Task 5: Install flyctl, create the Fly app, first deploy (manual)
+
+**Description:** Install flyctl (`winget install flyctl` or the PowerShell installer), `fly auth signup`
+or `fly auth login`, then `fly launch --no-deploy --copy-config` (confirm app name and region, keep the
+generated config identical to `fly.toml`), `fly deploy --remote-only`, `fly scale count 1`. If the app
+name changes, update `fly.toml` and README.
+
+**Acceptance criteria:**
+- [ ] `fly status` shows one machine in the chosen region, state started or stopped
+- [ ] `https://<app>.fly.dev/healthz` returns `{"status":"ok"}` over HTTPS
+- [ ] `fly.toml` in the repo matches what Fly has (no drift from `fly launch`)
+
+**Verification:**
+- [ ] Manual check: `curl https://<app>.fly.dev/healthz`
+- [ ] Manual check: `fly logs` shows "Application startup complete" and no errors
+
+**Dependencies:** Task 4
+
+**Files likely touched:** `fly.toml` (only if the name or region changes), `README.md`
+
+**Estimated scope:** XS
+
+---
+
+## Task 6: Post-deploy functional checks
+
+**Description:** Run the hosted checks from the spec against the public URL with curl and the browser:
+guards, real files, retention, privacy page, headers.
+
+**Acceptance criteria:**
+- [ ] 30 MB upload gets 413 quickly; six quick uploads get 429 with `Retry-After`
+- [ ] Both real decks convert and download; `sample.pdf` converts; a junk `.pdf` gets the generic 422
+- [ ] `/privacy` and the footer links work; response headers include the CSP; `/docs` is 404
+- [ ] After `RESULT_TTL_S` the result link returns 404; `fly status` shows the machine still healthy
+
+**Verification:**
+- [ ] Manual check: the curl sequence from the local verification, pointed at the public URL
+- [ ] Manual check: page shows "Hosted service" and the real limits line in the footer
+
+**Dependencies:** Task 5
+
+**Files likely touched:** none
+
+**Estimated scope:** XS
+
+---
+
+## Task 7: Measure the Fly proxy against a long silent conversion
+
+**Description:** Generate an 80-page, image-heavy PDF with PyMuPDF into a temp folder (not committed),
+upload it to the public URL, and time the response. The goal is a conversion that takes clearly more
+than 60 s on the shared CPU. Record the outcome: completed after N s, or connection closed after N s
+with the worker still running in `fly logs`.
+
+**Acceptance criteria:**
+- [ ] A test PDF exists whose conversion takes > 60 s on Fly (confirm from `fly logs` timestamps)
+- [ ] Result recorded in `SPEC.md` open question 1 with the measured number
+
+**Verification:**
+- [ ] Manual check: `curl -w "%{http_code} %{time_total}"` on the upload
+- [ ] Manual check: `fly logs` shows the worker finishing and whether the response was delivered
+
+**Dependencies:** Task 6
+
+**Files likely touched:** `SPEC.md` (open questions)
+
+**Estimated scope:** XS
+
+---
+
+## Task 8 (conditional): Adjust the timeout if Task 7 fails
+
+**Description:** Only if the proxy cut the response. Lower `CONVERT_TIMEOUT_S` in the Dockerfile to just
+under the measured proxy limit and lower `MAX_PAGES`/`MAX_SLIDES` so typical files finish inside it. This
+is an ask-first change (public limits). If the usable timeout is too short for real files, stop and plan
+the `202` + `GET /api/jobs/{id}` polling API as its own spec instead.
+
+**Acceptance criteria:**
+- [ ] Martin approved the new numbers
+- [ ] Dockerfile env, README table and SPEC.md updated together
+- [ ] Redeployed; Task 7's PDF now gets a clean 504 or converts within the limit
+
+**Verification:**
+- [ ] Tests pass: `uv run pytest -q`
+- [ ] Manual check: repeat Task 7 upload against the new deploy
+
+**Dependencies:** Task 7
+
+**Files likely touched:** `Dockerfile`, `README.md`, `SPEC.md`
+
+**Estimated scope:** S
+
+---
+
+## Task 9: Automatic deploys from CI (manual secret)
+
+**Description:** Create a Fly deploy token (`fly tokens create deploy -x 999999h`), add it as the
+`FLY_API_TOKEN` repository secret on GitHub, push a trivial change to `main`, and confirm the `deploy`
+job deploys.
+
+**Acceptance criteria:**
+- [ ] The `deploy` job is green on a push to `main`
+- [ ] `fly releases` shows the CI-triggered release
+
+**Verification:**
+- [ ] Manual check: GitHub Actions `deploy` job log ends with a successful `flyctl deploy`
+
+**Dependencies:** Task 5
+
+**Files likely touched:** none
+
+**Estimated scope:** XS
+
+---
+
+## Checkpoint 3: Live
+- [ ] Task 6 checks all pass on the public URL
+- [ ] Task 7 measured and recorded; Task 8 done or not needed
+- [ ] Push to `main` deploys automatically
+
+---
+
+## Task 10: Record the live URL and decisions
+
+**Description:** Put the public URL in the README's hosted section, resolve the spec's open questions
+(URL, Fly name, 413 token decision, proxy result), and propose the vault update (research note hosting
+section gets the URL and the proxy measurement) for Martin's OK.
+
+**Acceptance criteria:**
+- [ ] README shows the live URL and the final limits
+- [ ] SPEC.md open questions reduced to the custom domain
+- [ ] Vault proposal listed in the reply; written only after OK
+
+**Verification:**
+- [ ] Manual check: README limits match `Dockerfile` env and `GET /api/limits`
+
+**Dependencies:** Task 9
+
+**Files likely touched:** `README.md`, `SPEC.md`, vault `Research/pdftoword-converter.md`
+
+**Estimated scope:** S
+
+---
+
+## Checkpoint: Complete
+- [ ] All tasks checked
+- [ ] Spec, README and vault agree with what is deployed
