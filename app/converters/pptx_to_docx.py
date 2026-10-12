@@ -42,12 +42,12 @@ MAX_PAGE = 22 * EMU_PER_INCH
 MARGIN = Cm(1.27)
 ROW_GRID = Cm(0.5)
 MAX_PICTURE_HEIGHT = 0.85  # share of the usable page height; the per-slide budget shrinks pictures further when needed
-MAX_GAP = 0.2              # one vertical gap between shapes is at most this share of the usable height
-PAGE_FILL = 0.92           # share of the usable height a slide's content may fill before pictures and gaps shrink
-CHAR_WIDTH = 0.6           # average glyph width relative to the font size, for wrapping estimates
+MAX_GAP = 0.2  # one vertical gap between shapes is at most this share of the usable height
+PAGE_FILL = 0.92  # share of the usable height a slide's content may fill before pictures and gaps shrink
+CHAR_WIDTH = 0.6  # average glyph width relative to the font size, for wrapping estimates
 HEADING_FALLBACK_HEIGHT = 450000  # EMU reserved for the 'Slide n' heading when a slide has no title
 EMU_PER_PT = 12700
-LINE_FACTOR = 1.25         # Word line height relative to the font size, used for height estimates
+LINE_FACTOR = 1.25  # Word line height relative to the font size, used for height estimates
 
 TITLE_TYPES = {PP_PLACEHOLDER.TITLE, PP_PLACEHOLDER.CENTER_TITLE, PP_PLACEHOLDER.VERTICAL_TITLE}
 CHROME_TYPES = {PP_PLACEHOLDER.DATE, PP_PLACEHOLDER.FOOTER, PP_PLACEHOLDER.SLIDE_NUMBER}
@@ -60,10 +60,19 @@ ALIGN = {
     "just": WD_ALIGN_PARAGRAPH.JUSTIFY,
     "dist": WD_ALIGN_PARAGRAPH.JUSTIFY,
 }
-PRESET_COLORS = {"black": "000000", "white": "FFFFFF", "red": "FF0000", "blue": "0000FF", "green": "008000", "gray": "808080", "grey": "808080"}
+PRESET_COLORS = {
+    "black": "000000",
+    "white": "FFFFFF",
+    "red": "FF0000",
+    "blue": "0000FF",
+    "green": "008000",
+    "gray": "808080",
+    "grey": "808080",
+}
 
 
 # ---------- theme and inherited style resolution ----------
+
 
 class Theme:
     """Colour scheme, font scheme, master text styles and presentation defaults for one slide master."""
@@ -132,7 +141,7 @@ class Theme:
 
     @staticmethod
     def _modify(hex_color: str, el) -> str:
-        r, g, b = (int(hex_color[i:i + 2], 16) / 255 for i in (0, 2, 4))
+        r, g, b = (int(hex_color[i : i + 2], 16) / 255 for i in (0, 2, 4))
         for mod in el:
             name = etree.QName(mod).localname
             try:
@@ -198,8 +207,8 @@ class Ctx:
     theme: Theme | None = None
     themes: dict = field(default_factory=dict)
     font_ref_color: str | None = None  # text colour from the current shape's style reference, if any
-    cursor: int = 0        # vertical position on the current slide already covered by emitted content, EMU
-    gap_budget: int = 0    # remaining vertical whitespace that may still be reproduced on this slide
+    cursor: int = 0  # vertical position on the current slide already covered by emitted content, EMU
+    gap_budget: int = 0  # remaining vertical whitespace that may still be reproduced on this slide
 
 
 def _placeholder_type(shape):
@@ -313,7 +322,11 @@ def _run_style(rPr, chain, ctx: Ctx, font_scale: float = 1.0) -> RunStyle:
             rs.italic = el.get("i") in ("1", "true")
         if rs.underline is None and el.get("u") is not None:
             rs.underline = el.get("u") != "none"
-        if rs.color is None and ctx.theme is not None and (el.find(qn("a:solidFill")) is not None or el.find(qn("a:noFill")) is not None):
+        if (
+            rs.color is None
+            and ctx.theme is not None
+            and (el.find(qn("a:solidFill")) is not None or el.find(qn("a:noFill")) is not None)
+        ):
             rs.color = ctx.theme.color(el) or rs.color
             if rs.color is None:
                 rs.color = ""  # explicit fill that could not be resolved: stop looking further up
@@ -386,13 +399,47 @@ def _insert_in_order(parent, new, successors) -> None:
     parent.append(new)
 
 
-PPR_AFTER_SHD = ("w:tabs", "w:suppressAutoHyphens", "w:kinsoku", "w:wordWrap", "w:overflowPunct", "w:topLinePunct",
-                 "w:autoSpaceDE", "w:autoSpaceDN", "w:bidi", "w:adjustRightInd", "w:snapToGrid", "w:spacing", "w:ind",
-                 "w:contextualSpacing", "w:mirrorIndents", "w:suppressOverlap", "w:jc", "w:textDirection",
-                 "w:textAlignment", "w:textboxTightWrap", "w:outlineLvl", "w:divId", "w:cnfStyle", "w:rPr",
-                 "w:sectPr", "w:pPrChange")
-TCPR_AFTER_SHD = ("w:noWrap", "w:tcMar", "w:textDirection", "w:tcFitText", "w:vAlign", "w:hideMark", "w:headers",
-                  "w:cellIns", "w:cellDel", "w:cellMerge", "w:tcPrChange")
+PPR_AFTER_SHD = (
+    "w:tabs",
+    "w:suppressAutoHyphens",
+    "w:kinsoku",
+    "w:wordWrap",
+    "w:overflowPunct",
+    "w:topLinePunct",
+    "w:autoSpaceDE",
+    "w:autoSpaceDN",
+    "w:bidi",
+    "w:adjustRightInd",
+    "w:snapToGrid",
+    "w:spacing",
+    "w:ind",
+    "w:contextualSpacing",
+    "w:mirrorIndents",
+    "w:suppressOverlap",
+    "w:jc",
+    "w:textDirection",
+    "w:textAlignment",
+    "w:textboxTightWrap",
+    "w:outlineLvl",
+    "w:divId",
+    "w:cnfStyle",
+    "w:rPr",
+    "w:sectPr",
+    "w:pPrChange",
+)
+TCPR_AFTER_SHD = (
+    "w:noWrap",
+    "w:tcMar",
+    "w:textDirection",
+    "w:tcFitText",
+    "w:vAlign",
+    "w:hideMark",
+    "w:headers",
+    "w:cellIns",
+    "w:cellDel",
+    "w:cellMerge",
+    "w:tcPrChange",
+)
 
 
 def _shade_paragraph(p, color: str) -> None:
@@ -467,6 +514,7 @@ def _font_scale(shape) -> float:
 
 # ---------- page setup ----------
 
+
 def _setup_page(doc, prs, report: ConversionReport) -> tuple[int, int]:
     w, h = int(prs.slide_width), int(prs.slide_height)
     cw, ch = min(MAX_PAGE, max(MIN_PAGE, w)), min(MAX_PAGE, max(MIN_PAGE, h))
@@ -481,6 +529,7 @@ def _setup_page(doc, prs, report: ConversionReport) -> tuple[int, int]:
 
 
 # ---------- reading order ----------
+
 
 def _flatten(shapes, acc: list, base_top: int, base_left: int) -> None:
     for shape in shapes:
@@ -520,6 +569,7 @@ def _advance(ctx: Ctx, top: int, height: int) -> None:
 
 # ---------- text ----------
 
+
 def _paragraph_is_empty(paragraph) -> bool:
     return not paragraph.text.strip() and not any(etree.QName(c).localname == "br" for c in paragraph._p)
 
@@ -553,7 +603,9 @@ def _set_paragraph_mark_size(p, size_pt: float) -> None:
         el.set(qn("w:val"), str(int(round(size_pt * 2))))
 
 
-def _emit_paragraph(container, paragraph, shape, ctx: Ctx, reuse=None, force_style=None, font_scale=1.0, extra_before=0, shade=None):
+def _emit_paragraph(
+    container, paragraph, shape, ctx: Ctx, reuse=None, force_style=None, font_scale=1.0, extra_before=0, shade=None
+):
     chain = _pPr_chain(paragraph, shape, ctx)
     ps = _para_style(chain)
     first_rs = _run_style(_first_run_rPr(paragraph), chain, ctx, font_scale)
@@ -667,6 +719,7 @@ def _picture_box(shape, ctx: Ctx, max_width: int | None = None) -> tuple[int, in
 
 # ---------- layout: boxes, rows and the per-slide height budget ----------
 
+
 @dataclass
 class Box:
     top: int
@@ -674,9 +727,9 @@ class Box:
     bottom: int
     right: int
     shape: object
-    kind: str                 # 'text', 'picture', 'table', 'other'
-    col_width: int = 0        # width of the column this box is emitted into
-    height: int = 0           # estimated height at full size, EMU
+    kind: str  # 'text', 'picture', 'table', 'other'
+    col_width: int = 0  # width of the column this box is emitted into
+    height: int = 0  # estimated height at full size, EMU
     pic_w: int = 0
     pic_h: int = 0
 
@@ -690,7 +743,10 @@ def _classify(shape) -> str | None:
         return "other"
     if isinstance(shape, Picture):
         return "picture"
-    if isinstance(shape, GraphicFrame) or shape.shape_type in (MSO_SHAPE_TYPE.EMBEDDED_OLE_OBJECT, MSO_SHAPE_TYPE.LINKED_OLE_OBJECT):
+    if isinstance(shape, GraphicFrame) or shape.shape_type in (
+        MSO_SHAPE_TYPE.EMBEDDED_OLE_OBJECT,
+        MSO_SHAPE_TYPE.LINKED_OLE_OBJECT,
+    ):
         return "other"
     if getattr(shape, "has_text_frame", False) and shape.has_text_frame and shape.text_frame.text.strip():
         return "text"
@@ -746,7 +802,8 @@ def _group_rows(boxes: list[Box]) -> list[list[Box]]:
             if overlap <= 0.3 * max(1, min(box.bottom - box.top, r_bottom - r_top)):
                 continue
             side_by_side = all(
-                min(b.right, box.right) - max(b.left, box.left) <= 0.25 * max(1, min(b.right - b.left, box.right - box.left))
+                min(b.right, box.right) - max(b.left, box.left)
+                <= 0.25 * max(1, min(b.right - b.left, box.right - box.left))
                 for b in row
             )
             if side_by_side and len(row) < 4:
@@ -829,14 +886,27 @@ def _plan_slide(title_boxes: list[Box], rows: list[list[Box]], ctx: Ctx) -> None
 
 # ---------- emitting boxes ----------
 
-def _emit_text_frame(container, text_frame, shape, ctx: Ctx, first_paragraph=None, force_style=None, extra_before=0, shade=None):
+
+def _emit_text_frame(
+    container, text_frame, shape, ctx: Ctx, first_paragraph=None, force_style=None, extra_before=0, shade=None
+):
     """Writes the paragraphs of a text frame into `container` (document or table cell)."""
     scale = _font_scale(shape) if shape is not None else 1.0
     reuse = first_paragraph
     ctx.font_ref_color = _shape_style_color(shape, ctx, "a:fontRef") if shape is not None else None
     try:
         for paragraph in _trimmed_paragraphs(text_frame):
-            _emit_paragraph(container, paragraph, shape, ctx, reuse=reuse, force_style=force_style, font_scale=scale, extra_before=extra_before, shade=shade)
+            _emit_paragraph(
+                container,
+                paragraph,
+                shape,
+                ctx,
+                reuse=reuse,
+                force_style=force_style,
+                font_scale=scale,
+                extra_before=extra_before,
+                shade=shade,
+            )
             reuse = None
             extra_before = 0
     finally:
@@ -848,8 +918,16 @@ def _emit_title(title_boxes: list[Box], ctx: Ctx, new_page: bool) -> None:
     h.paragraph_format.page_break_before = new_page
     for box in title_boxes:
         if box.kind == "text":
-            _emit_text_frame(ctx.doc, box.shape.text_frame, box.shape, ctx, first_paragraph=h, force_style="Heading 1",
-                             extra_before=_take_gap(ctx, box.top), shade=_shape_fill(box.shape, ctx))
+            _emit_text_frame(
+                ctx.doc,
+                box.shape.text_frame,
+                box.shape,
+                ctx,
+                first_paragraph=h,
+                force_style="Heading 1",
+                extra_before=_take_gap(ctx, box.top),
+                shade=_shape_fill(box.shape, ctx),
+            )
             _advance(ctx, box.top, box.bottom - box.top)
             return
     h.add_run(f"Slide {ctx.slide_no}")
@@ -944,7 +1022,9 @@ def _emit_picture(box: Box, container, ctx: Ctx, first_paragraph=None, gap: int 
     p = first_paragraph if first_paragraph is not None else container.add_paragraph()
     if ext not in RASTER_EXT:
         p.add_run(f"[Image skipped: {ext.upper() or 'vector'} pictures are not supported]").italic = True
-        ctx.report.warn(f"Slide {ctx.slide_no}: a {ext.upper() or 'vector'} picture was skipped (EMF/WMF/SVG are not supported).")
+        ctx.report.warn(
+            f"Slide {ctx.slide_no}: a {ext.upper() or 'vector'} picture was skipped (EMF/WMF/SVG are not supported)."
+        )
         return
     try:
         data, w, h = _prepare_picture(shape)
@@ -974,7 +1054,9 @@ def _emit_box(box: Box, container, ctx: Ctx, first_paragraph=None, gap: int = 0,
         if fill and cell is not None:
             _shade_cell(cell, fill)
             fill = None
-        _emit_text_frame(container, shape.text_frame, shape, ctx, first_paragraph=first_paragraph, extra_before=gap, shade=fill)
+        _emit_text_frame(
+            container, shape.text_frame, shape, ctx, first_paragraph=first_paragraph, extra_before=gap, shade=fill
+        )
     else:
         p = first_paragraph if first_paragraph is not None else container.add_paragraph()
         if getattr(shape, "has_chart", False) and shape.has_chart:
@@ -988,7 +1070,9 @@ def _emit_box(box: Box, container, ctx: Ctx, first_paragraph=None, gap: int = 0,
             ctx.report.warn(f"Slide {ctx.slide_no}: chart '{title or shape.name}' was replaced by a placeholder.")
         else:
             p.add_run(f"[{shape.name}: SmartArt or embedded object not converted]").italic = True
-            ctx.report.warn(f"Slide {ctx.slide_no}: '{shape.name}' (SmartArt or embedded object) was replaced by a placeholder.")
+            ctx.report.warn(
+                f"Slide {ctx.slide_no}: '{shape.name}' (SmartArt or embedded object) was replaced by a placeholder."
+            )
 
 
 def _emit_row(row: list[Box], ctx: Ctx) -> None:
@@ -1012,7 +1096,9 @@ def _emit_row(row: list[Box], ctx: Ctx) -> None:
                 _emit_box(box, cell, ctx, first_paragraph=cell.paragraphs[0], cell=cell)
             except Exception as exc:
                 log.exception("slide %d shape %r failed", ctx.slide_no, box.shape.name)
-                ctx.report.warn(f"Slide {ctx.slide_no}: shape '{box.shape.name}' could not be converted ({exc.__class__.__name__}).")
+                ctx.report.warn(
+                    f"Slide {ctx.slide_no}: shape '{box.shape.name}' could not be converted ({exc.__class__.__name__})."
+                )
         _tiny_paragraph(ctx.doc)
     _advance(ctx, top, bottom - top)
 
@@ -1030,6 +1116,7 @@ def _emit_notes(slide, ctx: Ctx) -> None:
 
 
 # ---------- entry point ----------
+
 
 def convert_pptx(src: Path, dst: Path, include_notes: bool = False) -> ConversionReport:
     try:
