@@ -8,9 +8,9 @@ from pathlib import Path
 import pymupdf
 from lxml import etree
 from pptx import Presentation
-from pptx.oxml.ns import qn
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
+from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
 FIX = Path(__file__).parent / "fixtures"

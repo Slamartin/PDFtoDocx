@@ -24,7 +24,7 @@ spec's open questions. Several steps need Martin's accounts (GitHub, Fly) and ar
 
 ### Phase 1: Repo hygiene (local, no accounts needed)
 - [x] Task 1: Commit SPEC.md and the plan, mark the spec approved
-- [ ] Task 2: Add ruff, fix findings, run it in CI
+- [x] Task 2: Add ruff, fix findings, run it in CI
 - [ ] Task 3: Replace the placeholder repository URL
 
 ### Checkpoint 1: Clean local repo

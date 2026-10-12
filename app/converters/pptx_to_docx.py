@@ -149,9 +149,9 @@ class Theme:
             except ValueError:
                 continue
             if name == "lumMod" or name == "lumOff":
-                h, l, s = colorsys.rgb_to_hls(r, g, b)
-                l = l * val if name == "lumMod" else l + val
-                r, g, b = colorsys.hls_to_rgb(h, min(1.0, max(0.0, l)), s)
+                h, lum, s = colorsys.rgb_to_hls(r, g, b)
+                lum = lum * val if name == "lumMod" else lum + val
+                r, g, b = colorsys.hls_to_rgb(h, min(1.0, max(0.0, lum)), s)
             elif name == "tint":
                 r, g, b = (1 - (1 - c) * val for c in (r, g, b))
             elif name == "shade":
@@ -1027,10 +1027,10 @@ def _emit_picture(box: Box, container, ctx: Ctx, first_paragraph=None, gap: int 
         )
         return
     try:
-        data, w, h = _prepare_picture(shape)
+        data, w, _h = _prepare_picture(shape)
     except Exception as exc:  # unreadable pixels: fall back to the raw blob and original box
         log.warning("slide %d: could not preprocess picture %r (%s)", ctx.slide_no, shape.name, exc)
-        data, w, h = shape.image.blob, int(shape.width or 0), int(shape.height or 0)
+        data, w, _h = shape.image.blob, int(shape.width or 0), int(shape.height or 0)
     width = box.pic_w or min(max(w, 1), box.col_width or ctx.usable_width)
     try:
         p.add_run().add_picture(BytesIO(data), width=Emu(max(1, width)))

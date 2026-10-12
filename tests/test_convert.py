@@ -2,8 +2,8 @@ from pathlib import Path
 
 import docx
 import pytest
-from docx.oxml.ns import qn
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
 from docx.shared import Emu
 from fastapi.testclient import TestClient
 
