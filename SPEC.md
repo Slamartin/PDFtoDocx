@@ -216,5 +216,5 @@ Conventions:
    paid tier needs).
 2. Resolved 2026-10-12: the repository is `https://github.com/Slamartin/PDFtoDocx` (set in `config.py`,
    `fly.toml`, `pyproject.toml` and `index.html`).
-3. Should `/api/convert` count an oversize (413) upload against the rate limit? Today it does.
+3. Resolved 2026-10-12: an oversize (413) upload counts against the rate limit, on purpose.
 4. Custom domain for the hosted service, or keep `*.fly.dev`.

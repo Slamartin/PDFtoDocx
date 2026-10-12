@@ -76,10 +76,11 @@ spec approval covers it, but say so in the commit.
 ---
 
 ## Checkpoint 1: Clean local repo
-- [ ] `uv run pytest -q` passes
-- [ ] `uv run ruff check .` and `uv run ruff format --check .` clean
-- [ ] Decide: keep charging a rate-limit token on 413 (current) or reorder the middlewares
-- [ ] Review with Martin before publishing
+- [x] `uv run pytest -q` passes
+- [x] `uv run ruff check .` and `uv run ruff format --check .` clean
+- [x] Decide: keep charging a rate-limit token on 413 (current) or reorder the middlewares
+      -> keep (Martin, 2026-10-12)
+- [x] Review with Martin before publishing
 
 ---
 

@@ -28,9 +28,9 @@ spec's open questions. Several steps need Martin's accounts (GitHub, Fly) and ar
 - [x] Task 3: Replace the placeholder repository URL
 
 ### Checkpoint 1: Clean local repo
-- [ ] `uv run pytest -q` passes, `uv run ruff check .` and `uv run ruff format --check .` are clean
-- [ ] `git status` clean, 3 new commits on `main`
-- [ ] Review with Martin before publishing
+- [x] `uv run pytest -q` passes, `uv run ruff check .` and `uv run ruff format --check .` are clean
+- [x] All Phase 1 work committed on `main` (another session's converter work stays uncommitted)
+- [x] Review with Martin before publishing
 
 ### Phase 2: Publish (manual: GitHub account)
 - [ ] Task 4: Create the GitHub repo, push `main`, get CI green
@@ -74,5 +74,5 @@ spec's open questions. Several steps need Martin's accounts (GitHub, Fly) and ar
 
 - Resolved: the repository is `Slamartin/PDFtoDocx` (Task 3 done 2026-10-12).
 - Fly app name and region for Task 5 (current: `pdftoword`, `ams`).
-- Should a 413 (oversize upload) still cost a rate-limit token? Current behaviour: yes. Decide at Checkpoint 1; changing it is a 5-line reorder in `app/guards.py` plus one test.
+- Resolved 2026-10-12: a 413 (oversize upload) keeps costing a rate-limit token (abuse-resistant default).
 - Custom domain or `*.fly.dev`: not blocking, decide after launch.
