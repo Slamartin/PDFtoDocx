@@ -47,7 +47,8 @@ def test_client_side_limit_endpoint(client):
     r = client.get("/api/limits")
     assert r.status_code == 200
     body = r.json()
-    assert body["max_upload_bytes"] == settings.max_upload_bytes and "source_url" in body
+    assert body["max_upload_bytes"] == settings.max_upload_bytes
+    assert body["source_url"] == "https://github.com/Slamartin/PDFtoDocx"
 
 
 def test_page_caps(client, monkeypatch):

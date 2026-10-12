@@ -52,7 +52,7 @@ class Settings:
     # Misc
     work_dir: Path = field(default_factory=lambda: Path(tempfile.gettempdir()) / "pdftoword")
     public: bool = False  # switches UI copy from "runs on this PC" to hosted
-    source_url: str = "https://github.com/martinslama/pdftoword"
+    source_url: str = "https://github.com/Slamartin/PDFtoDocx"
     log_level: str = "INFO"
 
     @classmethod

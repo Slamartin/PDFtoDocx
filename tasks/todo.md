@@ -54,18 +54,18 @@ spec approval covers it, but say so in the commit.
 
 ## Task 3: Replace the placeholder repository URL
 
-**Description:** Put the real GitHub URL (from Martin) into every place that carries the placeholder
-`https://github.com/martinslama/pdftoword`.
+**Description:** Put the real GitHub URL `https://github.com/Slamartin/PDFtoDocx` (from Martin,
+2026-10-12) into every place that carried the old `martinslama/pdftoword` placeholder.
 
 **Acceptance criteria:**
-- [ ] `grep -r "martinslama/pdftoword"` returns nothing
-- [ ] `app/config.py` default, `fly.toml` `[env]`, `pyproject.toml` `[project.urls]`, and the
+- [x] `grep -r "martinslama/pdftoword"` returns nothing
+- [x] `app/config.py` default, `fly.toml` `[env]`, `pyproject.toml` `[project.urls]`, and the
       `index.html` footer fallback all show the real URL
-- [ ] `GET /api/limits` returns the real URL
+- [x] `GET /api/limits` returns the real URL (asserted in `test_client_side_limit_endpoint`)
 
 **Verification:**
-- [ ] Tests pass: `uv run pytest -q tests/test_api_limits.py -k limit_endpoint`
-- [ ] Manual check: start the server, footer link points to the repo
+- [x] Tests pass: `uv run pytest -q tests/test_api_limits.py -k limit_endpoint`
+- [x] Manual check: `/api/limits` and the footer `href` both carry the repo URL
 
 **Dependencies:** Task 1 (needs the repo name decision)
 

@@ -7,7 +7,7 @@ swap_size_mb = 512
 
 [env]
   LOG_LEVEL = "INFO"
-  SOURCE_URL = "https://github.com/martinslama/pdftoword"
+  SOURCE_URL = "https://github.com/Slamartin/PDFtoDocx"
 
 [http_service]
   internal_port = 8080

@@ -25,7 +25,7 @@ spec's open questions. Several steps need Martin's accounts (GitHub, Fly) and ar
 ### Phase 1: Repo hygiene (local, no accounts needed)
 - [x] Task 1: Commit SPEC.md and the plan, mark the spec approved
 - [x] Task 2: Add ruff, fix findings, run it in CI
-- [ ] Task 3: Replace the placeholder repository URL
+- [x] Task 3: Replace the placeholder repository URL
 
 ### Checkpoint 1: Clean local repo
 - [ ] `uv run pytest -q` passes, `uv run ruff check .` and `uv run ruff format --check .` are clean
@@ -72,7 +72,7 @@ spec's open questions. Several steps need Martin's accounts (GitHub, Fly) and ar
 
 ## Open Questions
 
-- GitHub owner and repo name for Task 3 (current placeholder: `martinslama/pdftoword`).
+- Resolved: the repository is `Slamartin/PDFtoDocx` (Task 3 done 2026-10-12).
 - Fly app name and region for Task 5 (current: `pdftoword`, `ams`).
 - Should a 413 (oversize upload) still cost a rate-limit token? Current behaviour: yes. Decide at Checkpoint 1; changing it is a 5-line reorder in `app/guards.py` plus one test.
 - Custom domain or `*.fly.dev`: not blocking, decide after launch.

@@ -214,7 +214,7 @@ Conventions:
 1. Fly proxy timeout for a silent long response: unverified until the first deploy. If it cuts at ~60 s,
    either lower `CONVERT_TIMEOUT_S` or move to a `202` + `GET /api/jobs/{id}` polling API (also what the
    paid tier needs).
-2. GitHub repo URL: `https://github.com/martinslama/pdftoword` is a placeholder in `config.py`,
-   `fly.toml`, `pyproject.toml` and `index.html`.
+2. Resolved 2026-10-12: the repository is `https://github.com/Slamartin/PDFtoDocx` (set in `config.py`,
+   `fly.toml`, `pyproject.toml` and `index.html`).
 3. Should `/api/convert` count an oversize (413) upload against the rate limit? Today it does.
 4. Custom domain for the hosted service, or keep `*.fly.dev`.

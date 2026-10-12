@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.urls]
-Source = "https://github.com/martinslama/pdftoword"
+Source = "https://github.com/Slamartin/PDFtoDocx"
 
 [dependency-groups]
 dev = [
