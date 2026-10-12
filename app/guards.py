@@ -45,13 +45,21 @@ class RateLimitMiddleware:
             await self.app(scope, receive, send)
             return
         if self.queue_full():
-            await _send_json(send, 503, {"error": "busy", "detail": "The server is busy. Try again in a moment."},
-                             [(b"retry-after", b"15")])
+            await _send_json(
+                send,
+                503,
+                {"error": "busy", "detail": "The server is busy. Try again in a moment."},
+                [(b"retry-after", b"15")],
+            )
             return
         wait = self.limits.check(client_ip(scope))
         if wait:
-            await _send_json(send, 429, {"error": "rate_limited", "detail": f"Too many conversions. Try again in {wait} s."},
-                             [(b"retry-after", str(wait).encode())])
+            await _send_json(
+                send,
+                429,
+                {"error": "rate_limited", "detail": f"Too many conversions. Try again in {wait} s."},
+                [(b"retry-after", str(wait).encode())],
+            )
             return
         await self.app(scope, receive, send)
 
@@ -72,7 +80,10 @@ class BodyLimitMiddleware:
             await self.app(scope, receive, send)
             return
         cap = settings.body_limit_bytes
-        payload = {"error": "too_large", "detail": f"File is larger than {settings.max_upload_bytes // (1024 * 1024)} MB."}
+        payload = {
+            "error": "too_large",
+            "detail": f"File is larger than {settings.max_upload_bytes // (1024 * 1024)} MB.",
+        }
 
         headers = {k.lower(): v for k, v in scope.get("headers", [])}
         length = headers.get(b"content-length")
@@ -113,9 +124,11 @@ class SecurityHeadersMiddleware:
         (b"x-content-type-options", b"nosniff"),
         (b"referrer-policy", b"no-referrer"),
         (b"x-frame-options", b"DENY"),
-        (b"content-security-policy",
-         b"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
-         b"img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'"),
+        (
+            b"content-security-policy",
+            b"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+            b"img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'",
+        ),
     ]
 
     def __init__(self, app):

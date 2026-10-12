@@ -26,8 +26,10 @@ def make_pdf(path: Path, password: str | None = None) -> None:
     doc = pymupdf.open()
     page = doc.new_page()
     page.insert_text((72, 72), "Quarterly report", fontsize=22, fontname="helv")
-    lorem = ("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor "
-             "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam. ") * 3
+    lorem = (
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor "
+        "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam. "
+    ) * 3
     page.insert_textbox(pymupdf.Rect(72, 100, 290, 300), lorem, fontsize=10, fontname="helv")
     page.insert_textbox(pymupdf.Rect(310, 100, 530, 300), lorem, fontsize=10, fontname="tiro")
     y0 = 320
@@ -54,10 +56,18 @@ def make_pptx(path: Path) -> None:
     s1.shapes.title.text = "Agenda"
     tf = s1.placeholders[1].text_frame
     tf.text = "First point"
-    p = tf.add_paragraph(); p.text = "Nested point"; p.level = 1
-    p = tf.add_paragraph(); p.text = "Deeper point"; p.level = 2
     p = tf.add_paragraph()
-    r = p.add_run(); r.text = "Bold red"; r.font.bold = True; r.font.color.rgb = RGBColor(0xC0, 0x00, 0x00); r.font.size = Pt(20)
+    p.text = "Nested point"
+    p.level = 1
+    p = tf.add_paragraph()
+    p.text = "Deeper point"
+    p.level = 2
+    p = tf.add_paragraph()
+    r = p.add_run()
+    r.text = "Bold red"
+    r.font.bold = True
+    r.font.color.rgb = RGBColor(0xC0, 0x00, 0x00)
+    r.font.size = Pt(20)
     # Slide 2: table with a merged cell + picture
     s2 = prs.slides.add_slide(prs.slide_layouts[5])
     s2.shapes.title.text = "Numbers"

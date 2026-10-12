@@ -20,10 +20,22 @@ dependencies = [
 Source = "https://github.com/martinslama/pdftoword"
 
 [dependency-groups]
-dev = ["pytest>=8", "httpx>=0.27"]
+dev = [
+    "pytest>=8",
+    "httpx>=0.27",
+    "ruff>=0.17.0",
+]
 
 [tool.uv]
 package = false
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+# pyflakes + the pycodestyle error classes ruff enabled by default before 0.17, plus import sorting.
+# The converters catch broad exceptions on purpose (best-effort per shape), so BLE/S rules stay off.
+select = ["E4", "E7", "E9", "F", "I"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

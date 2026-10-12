@@ -21,7 +21,9 @@ class _Bucket:
 
 
 class TokenBucketLimiter:
-    def __init__(self, rate_per_s: float, burst: int, clock: Callable[[], float] = time.monotonic, max_keys: int = 10_000):
+    def __init__(
+        self, rate_per_s: float, burst: int, clock: Callable[[], float] = time.monotonic, max_keys: int = 10_000
+    ):
         self.rate = rate_per_s
         self.burst = max(1, burst)
         self.clock = clock

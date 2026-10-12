@@ -85,6 +85,7 @@ queue = ConvertQueue()
 
 # ---------- housekeeping ----------
 
+
 def _cleanup_once() -> None:
     now = time.time()
     for job_id, job in list(_jobs.items()):
@@ -137,8 +138,22 @@ async def _unhandled(request: Request, exc: Exception):
 
 # ---------- worker process ----------
 
-_ENV_KEEP = ("PATH", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC", "TEMP", "TMP", "TMPDIR",
-             "HOME", "USERPROFILE", "LANG", "LC_ALL", "LC_CTYPE", "PYTHONUTF8")
+_ENV_KEEP = (
+    "PATH",
+    "SYSTEMROOT",
+    "SYSTEMDRIVE",
+    "WINDIR",
+    "COMSPEC",
+    "TEMP",
+    "TMP",
+    "TMPDIR",
+    "HOME",
+    "USERPROFILE",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "PYTHONUTF8",
+)
 
 
 def _worker_argv(job_dir: Path) -> list[str]:
@@ -147,10 +162,15 @@ def _worker_argv(job_dir: Path) -> list[str]:
 
 def _worker_env() -> dict[str, str]:
     env = {k: v for k, v in os.environ.items() if k.upper() in _ENV_KEEP}
-    env.update({
-        "OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "OPENCV_FOR_THREADS_NUM": "1",
-        "MALLOC_ARENA_MAX": "2", "PYTHONDONTWRITEBYTECODE": "1",
-    })
+    env.update(
+        {
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+            "OPENCV_FOR_THREADS_NUM": "1",
+            "MALLOC_ARENA_MAX": "2",
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+    )
     return env
 
 
@@ -169,9 +189,14 @@ def _run_job(job_dir: Path, spec: dict) -> dict:
         kwargs = {"start_new_session": True} if sys.platform != "win32" else {}
         try:
             proc = subprocess.run(
-                _worker_argv(job_dir), input=(json.dumps(spec) + "\n").encode(),
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=str(ROOT), env=_worker_env(),
-                timeout=settings.convert_timeout_s, **kwargs,
+                _worker_argv(job_dir),
+                input=(json.dumps(spec) + "\n").encode(),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                cwd=str(ROOT),
+                env=_worker_env(),
+                timeout=settings.convert_timeout_s,
+                **kwargs,
             )
         except subprocess.TimeoutExpired:
             return {"ok": False, "error": "timeout"}
@@ -196,18 +221,27 @@ def _error_response(result: dict, kind: str) -> JSONResponse:
     if code == "too_many_pages":
         unit = "slides" if kind == ".pptx" else "pages"
         cap = settings.max_slides if kind == ".pptx" else settings.max_pages
-        return JSONResponse({"error": "too_many_pages",
-                             "detail": f"The file has {result.get('pages')} {unit}; the limit is {cap}."}, status_code=413)
+        return JSONResponse(
+            {"error": "too_many_pages", "detail": f"The file has {result.get('pages')} {unit}; the limit is {cap}."},
+            status_code=413,
+        )
     if code == "timeout":
-        return JSONResponse({"error": "timeout",
-                             "detail": f"Conversion took longer than {int(settings.convert_timeout_s)} s. Try a smaller or simpler file."},
-                            status_code=504)
+        return JSONResponse(
+            {
+                "error": "timeout",
+                "detail": f"Conversion took longer than {int(settings.convert_timeout_s)} s. Try a smaller or simpler file.",
+            },
+            status_code=504,
+        )
     if code == "memory":
-        return JSONResponse({"error": "failed", "detail": "This file needs more memory than this service allows."}, status_code=422)
+        return JSONResponse(
+            {"error": "failed", "detail": "This file needs more memory than this service allows."}, status_code=422
+        )
     return JSONResponse({"error": "failed", "detail": GENERIC_FAIL}, status_code=422)
 
 
 # ---------- routes ----------
+
 
 def _kind(filename: str, head: bytes) -> str:
     ext = Path(filename).suffix.lower()
@@ -270,16 +304,25 @@ async def convert(file: UploadFile = File(...), password: str | None = Form(None
     dst = job_dir / "output.docx"
     out_name = (Path(name).stem or "converted") + ".docx"
     spec = {
-        "kind": kind, "src": str(src), "dst": str(dst), "password": password or None, "notes": bool(notes),
-        "max_pages": settings.max_pages, "max_slides": settings.max_slides, "memory_mb": settings.worker_memory_mb,
+        "kind": kind,
+        "src": str(src),
+        "dst": str(dst),
+        "password": password or None,
+        "notes": bool(notes),
+        "max_pages": settings.max_pages,
+        "max_slides": settings.max_slides,
+        "memory_mb": settings.worker_memory_mb,
     }
     try:
         await run_in_threadpool(_save_upload, file, src)
         result = await run_in_threadpool(_run_job, job_dir, spec)
     except Busy:
         shutil.rmtree(job_dir, ignore_errors=True)
-        return JSONResponse({"error": "busy", "detail": "The server is busy. Try again in a moment."},
-                            status_code=503, headers={"Retry-After": "15"})
+        return JSONResponse(
+            {"error": "busy", "detail": "The server is busy. Try again in a moment."},
+            status_code=503,
+            headers={"Retry-After": "15"},
+        )
     except Exception:
         shutil.rmtree(job_dir, ignore_errors=True)
         raise
@@ -288,8 +331,13 @@ async def convert(file: UploadFile = File(...), password: str | None = Form(None
 
     if not result.get("ok"):
         if result.get("error") not in ("password", "too_many_pages"):
-            log.warning("conversion failed job=%s kind=%s error=%s detail=%s", job_id, kind,
-                        result.get("error"), (result.get("detail") or "")[:2000])
+            log.warning(
+                "conversion failed job=%s kind=%s error=%s detail=%s",
+                job_id,
+                kind,
+                result.get("error"),
+                (result.get("detail") or "")[:2000],
+            )
         shutil.rmtree(job_dir, ignore_errors=True)
         return _error_response(result, kind)
 

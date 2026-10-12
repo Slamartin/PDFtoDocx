@@ -29,13 +29,17 @@ def test_size_cap_chunked_body(client, monkeypatch):
     boundary = "pdftowordtest"
 
     def body():
-        yield (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.pdf\"\r\n"
-               f"Content-Type: application/pdf\r\n\r\n").encode()
+        yield (
+            f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="a.pdf"\r\n'
+            f"Content-Type: application/pdf\r\n\r\n"
+        ).encode()
         for _ in range(200):
             yield b"%PDF" + b"x" * 1000
         yield f"\r\n--{boundary}--\r\n".encode()
 
-    r = client.post("/api/convert", content=body(), headers={"content-type": f"multipart/form-data; boundary={boundary}"})
+    r = client.post(
+        "/api/convert", content=body(), headers={"content-type": f"multipart/form-data; boundary={boundary}"}
+    )
     assert r.status_code == 413 and r.json()["error"] == "too_large"
 
 
@@ -151,7 +155,9 @@ def test_startup_wipes_work_dir(work_dir):
 
 def test_security_headers_and_download_name(client):
     r = client.get("/")
-    assert r.headers["x-content-type-options"] == "nosniff" and "frame-ancestors" in r.headers["content-security-policy"]
+    assert (
+        r.headers["x-content-type-options"] == "nosniff" and "frame-ancestors" in r.headers["content-security-policy"]
+    )
     r = post_file(client, FIX / "sample.pdf", name="wéird; náme.pdf")
     assert r.status_code == 200, r.text
     dl = client.get(f"/api/result/{r.json()['id']}")

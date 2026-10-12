@@ -17,12 +17,14 @@ from tests.make_fixtures import FIX
 def _all_tables(d):
     """Top-level tables plus tables nested in cells (side-by-side slide content uses a layout table)."""
     found = []
+
     def walk(tables):
         for t in tables:
             found.append(t)
             for row in t.rows:
                 for c in row.cells:
                     walk(c.tables)
+
     walk(d.tables)
     return found
 
@@ -51,7 +53,7 @@ def test_pdf(tmp_path: Path):
                     fills.add(shd.get(qn("w:fill")).upper())
     assert fills, "expected the 5% black header fill to survive as shading"
     for fill in fills:  # every shaded cell must be light, never solid black
-        r, g, b = (int(fill[i:i + 2], 16) for i in (0, 2, 4))
+        r, g, b = (int(fill[i : i + 2], 16) for i in (0, 2, 4))
         assert min(r, g, b) > 200, fill
 
 
@@ -100,8 +102,8 @@ def test_pptx(tmp_path: Path):
     assert t.cell(2, 2).text == "r2c2"
     assert len(d.inline_shapes) == 2 and report.images == 2
     upright, rotated = d.inline_shapes
-    assert upright.width > upright.height            # 120x80 source as is
-    assert rotated.height > rotated.width            # same source turned by 90 degrees
+    assert upright.width > upright.height  # 120x80 source as is
+    assert rotated.height > rotated.width  # same source turned by 90 degrees
     assert "Text inside a group" in _text(d)
     assert "Speaker notes" in [p.text for p in d.paragraphs if p.style.name == "Heading 3"]
     assert "Remember to thank the team." in _text(d)

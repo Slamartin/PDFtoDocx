@@ -11,16 +11,31 @@ from tests.make_fixtures import FIX
 
 
 def _spec(kind, src, dst, **extra):
-    base = {"kind": kind, "src": str(src), "dst": str(dst), "password": None, "notes": False,
-            "max_pages": 80, "max_slides": 80, "memory_mb": 0}
+    base = {
+        "kind": kind,
+        "src": str(src),
+        "dst": str(dst),
+        "password": None,
+        "notes": False,
+        "max_pages": 80,
+        "max_slides": 80,
+        "memory_mb": 0,
+    }
     base.update(extra)
     return base
 
 
 def test_worker_process_roundtrip(tmp_path):
     spec = _spec(".pdf", FIX / "sample.pdf", tmp_path / "out.docx")
-    proc = subprocess.run([sys.executable, "-m", "app.worker", str(tmp_path)], input=(json.dumps(spec) + "\n").encode(),
-                          cwd=str(ROOT), env=_worker_env(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
+    proc = subprocess.run(
+        [sys.executable, "-m", "app.worker", str(tmp_path)],
+        input=(json.dumps(spec) + "\n").encode(),
+        cwd=str(ROOT),
+        env=_worker_env(),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        timeout=120,
+    )
     assert proc.returncode == 0
     result = json.loads((tmp_path / "result.json").read_text())
     assert result["ok"] and result["report"]["pages"] == 2

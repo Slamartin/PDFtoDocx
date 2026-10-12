@@ -55,7 +55,10 @@ def test_rate_limits_follow_settings(monkeypatch):
 
 
 def test_client_ip_trust(monkeypatch):
-    scope = {"client": ("10.0.0.1", 1234), "headers": [(b"fly-client-ip", b"203.0.113.9"), (b"x-forwarded-for", b"198.51.100.1, 10.0.0.1")]}
+    scope = {
+        "client": ("10.0.0.1", 1234),
+        "headers": [(b"fly-client-ip", b"203.0.113.9"), (b"x-forwarded-for", b"198.51.100.1, 10.0.0.1")],
+    }
     monkeypatch.setattr(settings, "trusted_proxy", False)
     assert client_ip(scope) == "10.0.0.1"
     monkeypatch.setattr(settings, "trusted_proxy", True)
