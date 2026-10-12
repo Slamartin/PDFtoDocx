@@ -36,7 +36,7 @@ spec's open questions. Several steps need Martin's accounts (GitHub, Fly) and ar
 - [ ] Task 4: Create the GitHub repo, push `main`, get CI green
 
 ### Checkpoint 2: Public source
-- [ ] CI `test` and `docker` jobs green on GitHub
+- [x] CI `test` and `docker` jobs green on GitHub
 - [ ] Repo is public, LICENSE shows AGPL-3.0 on the GitHub page
 - [ ] Footer link on the page opens the repo
 

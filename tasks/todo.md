@@ -91,9 +91,11 @@ adds the remote, pushes `main`, and watches the first CI run. The `docker` job i
 image builds on Linux CI; the `deploy` job will fail until Task 9 and that is expected.
 
 **Acceptance criteria:**
-- [ ] `git remote -v` shows `origin` on GitHub; `main` pushed
-- [ ] CI `test` job green; CI `docker` job green (container converts `sample.pdf`)
+- [x] `git remote -v` shows `origin` on GitHub; `main` pushed (2026-10-12)
+- [x] CI `test` job green; CI `docker` job green (container converts `sample.pdf`), run 38302627394;
+      `deploy` failed as expected (no `FLY_API_TOKEN` yet)
 - [ ] Repository visibility is public; GitHub shows the AGPL-3.0 licence badge
+      (repo was created private; Martin switches it before Task 5)
 
 **Verification:**
 - [ ] Manual check: GitHub Actions page shows green for `test` and `docker`
