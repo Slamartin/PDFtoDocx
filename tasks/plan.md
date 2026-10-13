@@ -45,12 +45,12 @@ spec's open questions. Several steps need Martin's accounts (GitHub, Fly) and ar
 - [ ] Task 6: Post-deploy functional checks
 - [x] Task 7: Measure the Fly proxy against a long silent conversion
 - [x] Task 8 (conditional): Adjust the timeout if Task 7 fails (not needed)
-- [ ] Task 9: Automatic deploys from CI
+- [x] Task 9: Automatic deploys from CI
 
 ### Checkpoint 3: Live
 - [ ] All Task 6 checks pass against the public URL
 - [x] Task 7 result recorded in SPEC.md open questions
-- [ ] A push to `main` deploys without manual steps
+- [x] A push to `main` deploys without manual steps
 
 ### Phase 4: Close out
 - [ ] Task 10: Record the live URL and decisions in README, SPEC.md and the vault

@@ -233,12 +233,16 @@ the `202` + `GET /api/jobs/{id}` polling API as its own spec instead.
 `FLY_API_TOKEN` repository secret on GitHub, push a trivial change to `main`, and confirm the `deploy`
 job deploys.
 
+Done 2026-10-13 with a 1-year token instead (Martin's choice): `fly tokens create deploy -a pdftoword
+-x 8760h --name github-actions-ci`, piped straight into `gh secret set FLY_API_TOKEN`. It expires
+2027-10-13; renew it before then or CI deploys start failing.
+
 **Acceptance criteria:**
-- [ ] The `deploy` job is green on a push to `main`
-- [ ] `fly releases` shows the CI-triggered release
+- [x] The `deploy` job is green on a push to `main` (run 38453735908)
+- [x] `fly releases` shows the CI-triggered release (v2)
 
 **Verification:**
-- [ ] Manual check: GitHub Actions `deploy` job log ends with a successful `flyctl deploy`
+- [x] Manual check: GitHub Actions `deploy` job log ends with a successful `flyctl deploy`
 
 **Dependencies:** Task 5
 
@@ -250,8 +254,8 @@ job deploys.
 
 ## Checkpoint 3: Live
 - [ ] Task 6 checks all pass on the public URL
-- [ ] Task 7 measured and recorded; Task 8 done or not needed
-- [ ] Push to `main` deploys automatically
+- [x] Task 7 measured and recorded; Task 8 done or not needed
+- [x] Push to `main` deploys automatically
 
 ---
 
