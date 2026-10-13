@@ -266,12 +266,12 @@ Done 2026-10-13 with a 1-year token instead (Martin's choice): `fly tokens creat
 section gets the URL and the proxy measurement) for Martin's OK.
 
 **Acceptance criteria:**
-- [ ] README shows the live URL and the final limits
-- [ ] SPEC.md open questions reduced to the custom domain
-- [ ] Vault proposal listed in the reply; written only after OK
+- [x] README shows the live URL and the final limits (limits unchanged)
+- [x] SPEC.md open questions reduced to the custom domain
+- [x] Vault proposal listed in the reply; written only after OK (waiting for the OK)
 
 **Verification:**
-- [ ] Manual check: README limits match `Dockerfile` env and `GET /api/limits`
+- [x] Manual check: README limits match `Dockerfile` env and `GET /api/limits`
 
 **Dependencies:** Task 9
 

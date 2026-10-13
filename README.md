@@ -8,7 +8,7 @@ It runs in two profiles:
 - **Local**: start it on your own PC, nothing leaves your machine.
 - **Hosted**: the same code behind a public URL, with upload caps, rate limits, a conversion timeout and
   short result retention. Files are deleted right after conversion; results expire after 15 minutes.
-  See [privacy and terms](app/static/privacy.html).
+  Live at **https://pdftoword.fly.dev**. See [privacy and terms](app/static/privacy.html).
 
 ## Run locally
 
@@ -79,22 +79,33 @@ docker run --rm -p 8080:8080 -e MAX_UPLOAD_BYTES=52428800 pdftoword
 
 ## Deploy on Fly.io
 
-The repo contains `fly.toml` (one `shared-cpu-1x` machine with 1 GB, stops when idle). Images are built
-on Fly's remote builder, so Docker is not needed locally.
+The repo contains `fly.toml` (one `shared-cpu-1x` machine with 1 GB in `ams`, stops when idle). Images are
+built on Fly's remote builder, so Docker is not needed locally. Fly asks for billing details before it
+creates an app.
 
 ```sh
-fly launch --no-deploy --copy-config   # pick an app name and region
-fly deploy --remote-only
-fly scale count 1
+fly apps create pdftoword            # another name: change `app` in fly.toml too
+fly ips allocate-v6                  # free
+fly ips allocate-v4 --shared         # free; a dedicated IPv4 costs extra
+fly deploy --remote-only --ha=false  # one machine instead of the default two
 fly logs
 ```
 
-GitHub Actions (`.github/workflows/ci.yml`) runs the tests, builds and smoke-tests the image on every
-push, and deploys `main` when the `FLY_API_TOKEN` repository secret is set.
+`fly launch` works too, but it asks questions and may rewrite `fly.toml`.
 
-Things to check after the first deploy: that a 90 s conversion is not cut by the Fly proxy (lower
-`CONVERT_TIMEOUT_S` if it is), and the worker's real memory need (`fly logs` shows `worker crashed rc=-9`
-when `WORKER_MEMORY_MB` or the machine is too small).
+GitHub Actions (`.github/workflows/ci.yml`) runs the tests, builds and smoke-tests the image on every
+push, and deploys `main` with the `FLY_API_TOKEN` repository secret. The live app uses a deploy token
+that only covers this app and expires after a year:
+
+```sh
+gh secret set FLY_API_TOKEN --body "$(fly tokens create deploy -a pdftoword -x 8760h)"
+```
+
+Measured on the live machine (2026-10-13): the Fly proxy delivers a response that stays silent for the
+full 90 s timeout, so no polling API is needed for the free tier. The shared CPU is about three times
+slower than a desktop: a dense synthetic PDF converts at roughly 3.5 s per page, so heavy PDFs of 20+
+pages end in the `504` well before the page cap. If the worker runs out of memory, `fly logs` shows
+`worker crashed rc=-9`; raise `WORKER_MEMORY_MB` or the machine size.
 
 Measured in the image (python 3.14-slim, one CPU): the server process idles at about 57 MB; the worker
 imports pdf2docx with 114 MB of data segment and converts a 23-page, 148-image PDF with a 273 MB peak

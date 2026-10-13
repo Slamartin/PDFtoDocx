@@ -11,6 +11,7 @@ formatting as a flowing Word document can hold. It runs in two profiles from one
 - **Local**: Martin starts it on his PC with `run.ps1`; nothing leaves the machine.
 - **Hosted**: the same code on one small Fly.io machine, open to anonymous users, protected by upload,
   page, rate and time limits. Free; a paid "more usage" tier is a deferred phase 2 and out of scope here.
+  Live since 2026-10-13 as Fly app `pdftoword` in `ams`: https://pdftoword.fly.dev
 
 Users: anyone with a PDF or PowerPoint file who wants editable text, tables and pictures in Word, without
 installing Office. They drop files on a page, see a status per file, download the .docx.

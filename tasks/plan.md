@@ -56,7 +56,7 @@ spec's open questions. Several steps need Martin's accounts (GitHub, Fly) and ar
 - [ ] Task 10: Record the live URL and decisions in README, SPEC.md and the vault
 
 ### Checkpoint: Complete
-- [ ] SPEC.md has no open questions left except the custom domain
+- [x] SPEC.md has no open questions left except the custom domain
 - [ ] Vault research note updated (after Martin's OK)
 
 ## Risks and Mitigations
