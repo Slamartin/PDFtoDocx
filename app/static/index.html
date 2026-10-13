@@ -211,7 +211,7 @@
     }
     var parts = ['Up to ' + fmtMb(l.max_upload_bytes) + ' MB and ' + Math.max(l.max_pages, l.max_slides) + ' pages per file'];
     if (l.rate_per_minute > 0) parts.push(l.rate_per_minute + ' conversions per minute, ' + l.rate_daily + ' per day');
-    parts.push('results kept ' + fmtMinutes(l.result_ttl_s));
+    parts.push('Results kept ' + fmtMinutes(l.result_ttl_s));
     $('limitsLine').textContent = parts.join('. ') + '.';
     if (l.source_url) $('sourceLink').href = l.source_url;
   }
