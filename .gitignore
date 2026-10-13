@@ -6,3 +6,4 @@ tests/fixtures/
 .env
 *.log
 .ruff_cache/
+/CLAUDE.md
