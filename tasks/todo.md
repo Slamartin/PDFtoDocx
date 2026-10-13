@@ -157,7 +157,9 @@ guards, real files, retention, privacy page, headers.
 - [x] 30 MB upload gets 413 quickly (0.08 s, 64 KB sent); the sixth quick upload gets 429 with
       `Retry-After: 23`. While this PC was at 429, a POST from the Fly machine itself passed the limiter,
       so the buckets key on the real client IP (`Fly-Client-IP`), not the proxy address.
-- [ ] Both real decks convert and download (waiting for the deck files); `sample.pdf` (3.5 s) and
+- [x] Both real decks convert and download (Exekucni blok 20 slides in 3.3 s, Verejny rejstrik 44 slides in
+      3.7 s; hosted DOCX byte-identical to a local conversion; the 45th Word page of Verejny rejstrik was a
+      stretched picture keeping its native aspect, fixed in the converter); `sample.pdf` (3.5 s) and
       `sample.pptx` convert and the DOCX files open; a junk `.pdf` named `Confidential-Payroll-2026.pdf` gets
       the generic 422 and the name appears in neither the response nor `fly logs`
 - [x] `/privacy` and the footer links work; response headers include the CSP; `/docs`, `/redoc` and
@@ -253,7 +255,7 @@ Done 2026-10-13 with a 1-year token instead (Martin's choice): `fly tokens creat
 ---
 
 ## Checkpoint 3: Live
-- [ ] Task 6 checks all pass on the public URL
+- [x] Task 6 checks all pass on the public URL
 - [x] Task 7 measured and recorded; Task 8 done or not needed
 - [x] Push to `main` deploys automatically
 
@@ -282,5 +284,5 @@ section gets the URL and the proxy measurement) for Martin's OK.
 ---
 
 ## Checkpoint: Complete
-- [ ] All tasks checked
+- [x] All tasks checked (Task 8 not needed)
 - [ ] Spec, README and vault agree with what is deployed
