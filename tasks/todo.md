@@ -154,14 +154,20 @@ name changes, update `fly.toml` and README.
 guards, real files, retention, privacy page, headers.
 
 **Acceptance criteria:**
-- [ ] 30 MB upload gets 413 quickly; six quick uploads get 429 with `Retry-After`
-- [ ] Both real decks convert and download; `sample.pdf` converts; a junk `.pdf` gets the generic 422
-- [ ] `/privacy` and the footer links work; response headers include the CSP; `/docs` is 404
-- [ ] After `RESULT_TTL_S` the result link returns 404; `fly status` shows the machine still healthy
+- [x] 30 MB upload gets 413 quickly (0.08 s, 64 KB sent); the sixth quick upload gets 429 with
+      `Retry-After: 23`. While this PC was at 429, a POST from the Fly machine itself passed the limiter,
+      so the buckets key on the real client IP (`Fly-Client-IP`), not the proxy address.
+- [ ] Both real decks convert and download (waiting for the deck files); `sample.pdf` (3.5 s) and
+      `sample.pptx` convert and the DOCX files open; a junk `.pdf` named `Confidential-Payroll-2026.pdf` gets
+      the generic 422 and the name appears in neither the response nor `fly logs`
+- [x] `/privacy` and the footer links work; response headers include the CSP; `/docs`, `/redoc` and
+      `/openapi.json` are 404; no cookies; the only absolute URL in the page is the GitHub source link
+- [x] After `RESULT_TTL_S` the result link returns 404 (200 at 840 s, 404 at 960 s, machine kept awake and
+      not restarted in between); `fly status` shows the machine still healthy
 
 **Verification:**
-- [ ] Manual check: the curl sequence from the local verification, pointed at the public URL
-- [ ] Manual check: page shows "Hosted service" and the real limits line in the footer
+- [x] Manual check: the curl sequence from the local verification, pointed at the public URL (2026-10-13)
+- [x] Manual check: page shows "Hosted service" and the real limits line in the footer (headless Edge)
 
 **Dependencies:** Task 5
 
@@ -179,12 +185,13 @@ than 60 s on the shared CPU. Record the outcome: completed after N s, or connect
 with the worker still running in `fly logs`.
 
 **Acceptance criteria:**
-- [ ] A test PDF exists whose conversion takes > 60 s on Fly (confirm from `fly logs` timestamps)
-- [ ] Result recorded in `SPEC.md` open question 1 with the measured number
+- [x] A test PDF exists whose conversion takes > 60 s on Fly: a 22-page synthetic PDF (dense styled text,
+      ruled table, noise image per page) runs into the 90 s worker timeout; 10 pages of it take 35 s
+- [x] Result recorded in `SPEC.md` open question 1 with the measured number
 
 **Verification:**
-- [ ] Manual check: `curl -w "%{http_code} %{time_total}"` on the upload
-- [ ] Manual check: `fly logs` shows the worker finishing and whether the response was delivered
+- [x] Manual check: `curl -w` gave `HTTP 504 in 90.9 s`: the proxy delivered the silent response
+- [x] Manual check: `fly logs` shows `conversion failed ... error=timeout` at 18:57:41 and the 504 sent
 
 **Dependencies:** Task 6
 
@@ -195,6 +202,8 @@ with the worker still running in `fly logs`.
 ---
 
 ## Task 8 (conditional): Adjust the timeout if Task 7 fails
+
+Not needed (2026-10-13): the proxy delivered a 90.9 s response, so the 90 s timeout stays.
 
 **Description:** Only if the proxy cut the response. Lower `CONVERT_TIMEOUT_S` in the Dockerfile to just
 under the measured proxy limit and lower `MAX_PAGES`/`MAX_SLIDES` so typical files finish inside it. This

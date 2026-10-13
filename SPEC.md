@@ -211,9 +211,12 @@ Conventions:
 
 ## Open Questions
 
-1. Fly proxy timeout for a silent long response: unverified until the first deploy. If it cuts at ~60 s,
-   either lower `CONVERT_TIMEOUT_S` or move to a `202` + `GET /api/jobs/{id}` polling API (also what the
-   paid tier needs).
+1. Resolved 2026-10-13: the Fly proxy does not cut a silent long response. A 22-page synthetic PDF (dense
+   styled text, a ruled table and a noise image per page) ran into the 90 s worker timeout and the app's
+   `504` reached the client after 90.9 s, so `CONVERT_TIMEOUT_S=90` stays. On the shared CPU that file
+   converts at roughly 3.5 s per page (10 pages: 35 s, 12.7 s on the dev PC), so dense PDFs well under
+   `MAX_PAGES` end in the clean `504`. A `202` + `GET /api/jobs/{id}` polling API is still what the paid
+   tier needs.
 2. Resolved 2026-10-12: the repository is `https://github.com/Slamartin/PDFtoDocx` (set in `config.py`,
    `fly.toml`, `pyproject.toml` and `index.html`).
 3. Resolved 2026-10-12: an oversize (413) upload counts against the rate limit, on purpose.
