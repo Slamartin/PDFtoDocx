@@ -53,11 +53,11 @@ spec's open questions. Several steps need Martin's accounts (GitHub, Fly) and ar
 - [x] A push to `main` deploys without manual steps
 
 ### Phase 4: Close out
-- [ ] Task 10: Record the live URL and decisions in README, SPEC.md and the vault
+- [x] Task 10: Record the live URL and decisions in README, SPEC.md and the vault
 
 ### Checkpoint: Complete
 - [x] SPEC.md has no open questions left except the custom domain
-- [ ] Vault research note updated (after Martin's OK)
+- [x] Vault research note updated (after Martin's OK)
 
 ## Risks and Mitigations
 

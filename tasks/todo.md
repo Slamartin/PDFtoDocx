@@ -268,7 +268,7 @@ section gets the URL and the proxy measurement) for Martin's OK.
 **Acceptance criteria:**
 - [x] README shows the live URL and the final limits (limits unchanged)
 - [x] SPEC.md open questions reduced to the custom domain
-- [x] Vault proposal listed in the reply; written only after OK (waiting for the OK)
+- [x] Vault proposal listed in the reply; written only after OK (written 2026-10-13, vault commit 0362144)
 
 **Verification:**
 - [x] Manual check: README limits match `Dockerfile` env and `GET /api/limits`
