@@ -988,6 +988,16 @@ class TestEmitPicture:
         assert ctx.doc.inline_shapes[0].width == Emu(600000)
         assert ctx.report.images == 1
 
+    def test_stretched_picture_keeps_the_frame_aspect(self):
+        # A 3:2 image stretched into a square frame: Word must not fall back to the image's own aspect, or the
+        # picture comes out a different height than the slide was planned with and can spill onto another page.
+        ctx = make_ctx()
+        shape = picture_shape(png_bytes(120, 80), 1200000, 1200000)
+        b = box(0, 0, 1200000, 1200000, kind="picture", shape=shape)
+        b.pic_w, b.pic_h = 600000, 600000
+        _emit_picture(b, ctx.doc, ctx)
+        assert (ctx.doc.inline_shapes[0].width, ctx.doc.inline_shapes[0].height) == (Emu(600000), Emu(600000))
+
     def test_undecodable_picture_is_skipped_with_a_warning(self):
         ctx = make_ctx()
         shape = picture_shape(b"not an image", 100, 100)

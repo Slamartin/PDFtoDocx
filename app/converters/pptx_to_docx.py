@@ -1066,13 +1066,16 @@ def _emit_picture(box: Box, container, ctx: Ctx, first_paragraph=None, gap: int 
         )
         return
     try:
-        data, w, _h = _prepare_picture(shape)
+        data, w, h = _prepare_picture(shape)
     except Exception as exc:  # unreadable pixels: fall back to the raw blob and original box
         log.warning("slide %d: could not preprocess picture %r (%s)", ctx.slide_no, shape.name, exc)
-        data, w, _h = shape.image.blob, int(shape.width or 0), int(shape.height or 0)
+        data, w, h = shape.image.blob, int(shape.width or 0), int(shape.height or 0)
     width = box.pic_w or min(max(w, 1), box.col_width or ctx.usable_width)
+    # Given only a width, Word keeps the image's own aspect ratio. PowerPoint lets a picture be stretched to its
+    # frame, and _plan_slide budgeted the frame's height, so pass the height too.
+    height = Emu(max(1, int(width * h / w))) if w > 0 and h > 0 else None
     try:
-        p.add_run().add_picture(BytesIO(data), width=Emu(max(1, width)))
+        p.add_run().add_picture(BytesIO(data), width=Emu(max(1, width)), height=height)
     except UnrecognizedImageError:
         ctx.report.warn(f"Slide {ctx.slide_no}: a picture could not be decoded and was skipped.")
         return
