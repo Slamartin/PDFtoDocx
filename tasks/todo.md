@@ -117,6 +117,8 @@ image builds on Linux CI; the `deploy` job will fail until Task 9 and that is ex
 
 ## Task 5: Install flyctl, create the Fly app, first deploy (manual)
 
+Progress 2026-10-13: flyctl v0.4.116 installed with winget (not logged in yet). Repo still private.
+
 **Description:** Install flyctl (`winget install flyctl` or the PowerShell installer), `fly auth signup`
 or `fly auth login`, then `fly launch --no-deploy --copy-config` (confirm app name and region, keep the
 generated config identical to `fly.toml`), `fly deploy --remote-only`, `fly scale count 1`. If the app
