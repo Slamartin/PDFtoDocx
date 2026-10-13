@@ -41,7 +41,7 @@ spec's open questions. Several steps need Martin's accounts (GitHub, Fly) and ar
 - [x] Footer link on the page opens the repo
 
 ### Phase 3: Deploy (manual: Fly account)
-- [ ] Task 5: Install flyctl, create the Fly app, first deploy
+- [x] Task 5: Install flyctl, create the Fly app, first deploy
 - [ ] Task 6: Post-deploy functional checks
 - [ ] Task 7: Measure the Fly proxy against a long silent conversion
 - [ ] Task 8 (conditional): Adjust the timeout if Task 7 fails

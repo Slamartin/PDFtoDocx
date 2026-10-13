@@ -117,7 +117,10 @@ image builds on Linux CI; the `deploy` job will fail until Task 9 and that is ex
 
 ## Task 5: Install flyctl, create the Fly app, first deploy (manual)
 
-Progress 2026-10-13: flyctl v0.4.116 installed with winget (not logged in yet). Repo public since 2026-10-13.
+Done 2026-10-13 with flyctl v0.4.116. Instead of `fly launch` (interactive, may rewrite `fly.toml`):
+`fly apps create pdftoword --org personal`, `fly ips allocate-v6` and `fly ips allocate-v4 --shared` (avoids
+the paid dedicated IPv4), then `fly deploy --remote-only --ha=false` (one machine, so no `fly scale count 1`).
+Fly asked for billing before it would create the app. Remote image 314 MB.
 
 **Description:** Install flyctl (`winget install flyctl` or the PowerShell installer), `fly auth signup`
 or `fly auth login`, then `fly launch --no-deploy --copy-config` (confirm app name and region, keep the
@@ -125,13 +128,17 @@ generated config identical to `fly.toml`), `fly deploy --remote-only`, `fly scal
 name changes, update `fly.toml` and README.
 
 **Acceptance criteria:**
-- [ ] `fly status` shows one machine in the chosen region, state started or stopped
-- [ ] `https://<app>.fly.dev/healthz` returns `{"status":"ok"}` over HTTPS
-- [ ] `fly.toml` in the repo matches what Fly has (no drift from `fly launch`)
+- [x] `fly status` shows one machine in the chosen region, state started or stopped (machine
+      83099ebddd7698, `ams`, shared-cpu-1x, 1024 MB, 512 MB swap, health check passing)
+- [x] `https://pdftoword.fly.dev/healthz` returns `{"status":"ok"}` over HTTPS
+- [x] `fly.toml` in the repo matches what Fly has (unchanged; machine config shows the same services,
+      concurrency, auto stop/start and health check)
 
 **Verification:**
-- [ ] Manual check: `curl https://<app>.fly.dev/healthz`
-- [ ] Manual check: `fly logs` shows "Application startup complete" and no errors
+- [x] Manual check: `curl https://pdftoword.fly.dev/healthz` (200); `/api/limits` shows the public
+      profile and the CSP header is present
+- [x] Manual check: `fly logs` shows "Application startup complete"; the only error is one health check
+      that ran a second before uvicorn was listening, passing from the next check on
 
 **Dependencies:** Task 4
 
