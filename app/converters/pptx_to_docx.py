@@ -71,6 +71,20 @@ PRESET_COLORS = {
 }
 
 
+def _pct(raw: str | None) -> float | None:
+    """OOXML percentages come as thousandths of a percent ('150000') or as a string ('150%'); both -> 1.5.
+    None when the attribute is missing or malformed."""
+    if not raw:
+        return None
+    raw = raw.strip()
+    try:
+        if raw.endswith("%"):
+            return float(raw[:-1]) / 100
+        return int(raw) / 100000
+    except ValueError:
+        return None
+
+
 # ---------- theme and inherited style resolution ----------
 
 
@@ -144,9 +158,8 @@ class Theme:
         r, g, b = (int(hex_color[i : i + 2], 16) / 255 for i in (0, 2, 4))
         for mod in el:
             name = etree.QName(mod).localname
-            try:
-                val = int(mod.get("val", "100000")) / 100000
-            except ValueError:
+            val = _pct(mod.get("val", "100000"))
+            if val is None:
                 continue
             if name == "lumMod" or name == "lumOff":
                 h, lum, s = colorsys.rgb_to_hls(r, g, b)
@@ -267,11 +280,16 @@ def _bullet_from(pPr):
 def _spacing_pts(el):
     """a:spcBef / a:spcAft / a:lnSpc -> (percent, points)."""
     pct = el.find(qn("a:spcPct"))
-    if pct is not None and pct.get("val"):
-        return int(pct.get("val")) / 100000, None
+    if pct is not None:
+        value = _pct(pct.get("val"))
+        if value is not None:
+            return value, None
     pts = el.find(qn("a:spcPts"))
     if pts is not None and pts.get("val"):
-        return None, int(pts.get("val")) / 100
+        try:
+            return None, int(pts.get("val")) / 100
+        except ValueError:
+            pass
     return None, None
 
 
@@ -505,8 +523,9 @@ def _font_scale(shape) -> float:
     try:
         body_pr = shape.text_frame._txBody.find(qn("a:bodyPr"))
         auto = body_pr.find(qn("a:normAutofit")) if body_pr is not None else None
-        if auto is not None and auto.get("fontScale"):
-            return int(auto.get("fontScale")) / 100000
+        scale = _pct(auto.get("fontScale")) if auto is not None else None
+        if scale:
+            return scale
     except Exception:
         pass
     return 1.0
@@ -531,14 +550,34 @@ def _setup_page(doc, prs, report: ConversionReport) -> tuple[int, int]:
 # ---------- reading order ----------
 
 
-def _flatten(shapes, acc: list, base_top: int, base_left: int) -> None:
+def _child_space(group) -> tuple[int, int, float, float]:
+    """How a group's children map onto its own box: (chOff x, chOff y, scale x, scale y).
+
+    A child at (x, y) in the group's child space sits at group.off + (x - chOff) * scale in the
+    parent's space, where scale = ext / chExt. PowerPoint sets chOff = off and chExt = ext when a
+    group is made, so the child coordinates usually are slide coordinates already; moving or
+    resizing the group changes only off/ext and the children stay where they were."""
+    try:
+        xfrm = group._element.find(qn("p:grpSpPr")).find(qn("a:xfrm"))
+        ch_off, ch_ext, ext = xfrm.find(qn("a:chOff")), xfrm.find(qn("a:chExt")), xfrm.find(qn("a:ext"))
+        cx, cy = int(ch_ext.get("cx")), int(ch_ext.get("cy"))
+        sx = int(ext.get("cx")) / cx if cx else 1.0
+        sy = int(ext.get("cy")) / cy if cy else 1.0
+        return int(ch_off.get("x")), int(ch_off.get("y")), sx, sy
+    except Exception:
+        return 0, 0, 1.0, 1.0
+
+
+def _flatten(shapes, acc: list, base_top: int, base_left: int, scale_y: float = 1.0, scale_x: float = 1.0) -> None:
+    """Collects (top, left, shape) in slide coordinates, descending into groups.
+    Shape sizes are left in their own (child) space; a scaled group is rare and only shifts the estimates."""
     for shape in shapes:
-        top = (shape.top or 0) + base_top
-        left = (shape.left or 0) + base_left
+        top = base_top + int((shape.top or 0) * scale_y)
+        left = base_left + int((shape.left or 0) * scale_x)
         if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
-            # Child coordinates live in the group's own space; using the group's
-            # position as an offset keeps the group together in reading order.
-            _flatten(shape.shapes, acc, top, left)
+            ch_x, ch_y, sx, sy = _child_space(shape)
+            inner_y, inner_x = scale_y * sy, scale_x * sx
+            _flatten(shape.shapes, acc, top - int(ch_y * inner_y), left - int(ch_x * inner_x), inner_y, inner_x)
         else:
             acc.append((top, left, shape))
 
