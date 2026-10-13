@@ -92,14 +92,14 @@ image builds on Linux CI; the `deploy` job will fail until Task 9 and that is ex
 
 **Acceptance criteria:**
 - [x] `git remote -v` shows `origin` on GitHub; `main` pushed (2026-10-12)
-- [x] CI `test` job green; CI `docker` job green (container converts `sample.pdf`), run 38302627394;
+- [x] CI `test` job green; CI `docker` job green (container converts `sample.pdf`), run 38444213982;
       `deploy` failed as expected (no `FLY_API_TOKEN` yet)
-- [ ] Repository visibility is public; GitHub shows the AGPL-3.0 licence badge
-      (repo was created private; Martin switches it before Task 5)
+- [x] Repository visibility is public; GitHub shows the AGPL-3.0 licence badge (2026-10-13). Before the
+      switch the history was rewritten to the GitHub noreply commit email and the old CI runs deleted.
 
 **Verification:**
-- [ ] Manual check: GitHub Actions page shows green for `test` and `docker`
-- [ ] Manual check: opening the footer link from the local page lands on the repo
+- [x] Manual check: GitHub Actions page shows green for `test` and `docker`
+- [x] Manual check: the footer URL `https://github.com/Slamartin/PDFtoDocx` returns 200 without login
 
 **Dependencies:** Task 3
 
@@ -110,14 +110,14 @@ image builds on Linux CI; the `deploy` job will fail until Task 9 and that is ex
 ---
 
 ## Checkpoint 2: Public source
-- [ ] CI green for `test` and `docker`
-- [ ] Source link works; AGPL obligation met
+- [x] CI green for `test` and `docker`
+- [x] Source link works; AGPL obligation met
 
 ---
 
 ## Task 5: Install flyctl, create the Fly app, first deploy (manual)
 
-Progress 2026-10-13: flyctl v0.4.116 installed with winget (not logged in yet). Repo still private.
+Progress 2026-10-13: flyctl v0.4.116 installed with winget (not logged in yet). Repo public since 2026-10-13.
 
 **Description:** Install flyctl (`winget install flyctl` or the PowerShell installer), `fly auth signup`
 or `fly auth login`, then `fly launch --no-deploy --copy-config` (confirm app name and region, keep the
