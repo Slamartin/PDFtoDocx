@@ -48,6 +48,7 @@ class Settings:
     rate_per_minute: float = 0.0
     rate_burst: int = 5
     rate_daily: int = 40
+    rate_max_inflight: int = 1  # conversions in progress per client while limiting is on; 0 = no cap
     trusted_proxy: bool = False  # trust Fly-Client-IP; only safe behind the Fly proxy, which overwrites it
     # Misc
     work_dir: Path = field(default_factory=lambda: Path(tempfile.gettempdir()) / "pdftoword")
@@ -73,6 +74,7 @@ class Settings:
             rate_per_minute=_float("RATE_PER_MINUTE", d.rate_per_minute),
             rate_burst=_int("RATE_BURST", d.rate_burst),
             rate_daily=_int("RATE_DAILY", d.rate_daily),
+            rate_max_inflight=_int("RATE_MAX_INFLIGHT", d.rate_max_inflight),
             trusted_proxy=_bool("TRUSTED_PROXY", d.trusted_proxy),
             work_dir=Path(os.environ.get("WORK_DIR", str(d.work_dir))),
             public=_bool("PUBLIC", d.public),

@@ -73,6 +73,7 @@ class RateLimits:
         self._key: tuple | None = None
         self.minute: TokenBucketLimiter | None = None
         self.daily: TokenBucketLimiter | None = None
+        self._inflight: dict[str, int] = {}
 
     def _sync(self) -> None:
         key = (settings.rate_per_minute, settings.rate_burst, settings.rate_daily)
@@ -103,6 +104,22 @@ class RateLimits:
             return wait_d
         return 0
 
+    def begin(self, key: str) -> bool:
+        """Counts a request from `key` as in progress (upload, queue wait and conversion). False, and
+        nothing counted, when rate limiting is on and `key` already has `rate_max_inflight` in progress:
+        otherwise one address could hold the running slot and every waiting slot at once.
+        Event-loop only (the middleware), so no lock."""
+        n = self._inflight.get(key, 0)
+        if self.enabled and 0 < settings.rate_max_inflight <= n:
+            return False
+        self._inflight[key] = n + 1
+        return True
+
+    def end(self, key: str) -> None:
+        n = self._inflight.pop(key, 0) - 1
+        if n > 0:
+            self._inflight[key] = n
+
     def evict(self) -> None:
         self._sync()
         for lim in (self.minute, self.daily):
@@ -111,6 +128,7 @@ class RateLimits:
 
     def reset(self) -> None:
         self._key = None
+        self._inflight.clear()
         self._sync()
 
 

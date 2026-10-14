@@ -32,8 +32,8 @@ def _is_convert(scope: dict) -> bool:
 
 
 class RateLimitMiddleware:
-    """429 when the client IP is over its token buckets, 503 when the conversion queue is full.
-    Both are decided before a single byte of the upload is read."""
+    """429 when the client IP is over its token buckets or already has a conversion in progress, 503 when
+    the conversion queue is full. All are decided before a single byte of the upload is read."""
 
     def __init__(self, app, limits: RateLimits, queue_full: Callable[[], bool]):
         self.app = app
@@ -52,16 +52,29 @@ class RateLimitMiddleware:
                 [(b"retry-after", b"15")],
             )
             return
-        wait = self.limits.check(client_ip(scope))
-        if wait:
+        key = client_ip(scope)
+        # Checked before the token buckets, so a request turned away here costs no token.
+        if not self.limits.begin(key):
             await _send_json(
                 send,
                 429,
-                {"error": "rate_limited", "detail": f"Too many conversions. Try again in {wait} s."},
-                [(b"retry-after", str(wait).encode())],
+                {"error": "rate_limited", "detail": "A conversion from your address is still running. Try again soon."},
+                [(b"retry-after", b"15")],
             )
             return
-        await self.app(scope, receive, send)
+        try:
+            wait = self.limits.check(key)
+            if wait:
+                await _send_json(
+                    send,
+                    429,
+                    {"error": "rate_limited", "detail": f"Too many conversions. Try again in {wait} s."},
+                    [(b"retry-after", str(wait).encode())],
+                )
+                return
+            await self.app(scope, receive, send)
+        finally:
+            self.limits.end(key)
 
 
 class BodyLimitMiddleware:

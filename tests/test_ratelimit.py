@@ -54,6 +54,26 @@ def test_rate_limits_follow_settings(monkeypatch):
     assert rl.minute._buckets["x"].tokens >= 1
 
 
+def test_inflight_cap(monkeypatch):
+    rl = RateLimits(clock=Clock())
+    monkeypatch.setattr(settings, "rate_max_inflight", 1)
+    monkeypatch.setattr(settings, "rate_per_minute", 0)
+    assert rl.begin("x") and rl.begin("x")  # no cap while rate limiting is off (local run)
+    rl.end("x")
+    rl.end("x")
+    monkeypatch.setattr(settings, "rate_per_minute", 2)
+    assert rl.begin("x")
+    assert not rl.begin("x")  # second one from the same address
+    assert rl.begin("y")  # other addresses are independent
+    rl.end("x")
+    assert rl.begin("x")  # released when the first finishes
+    rl.end("x")
+    rl.end("y")
+    assert not rl._inflight
+    monkeypatch.setattr(settings, "rate_max_inflight", 0)
+    assert rl.begin("x") and rl.begin("x")
+
+
 def test_client_ip_trust(monkeypatch):
     scope = {
         "client": ("10.0.0.1", 1234),

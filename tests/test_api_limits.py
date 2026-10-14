@@ -101,6 +101,34 @@ def test_queue_full_returns_503(client, monkeypatch):
     assert statuses == [422, 503], statuses  # sleeping worker writes no result -> 422; the other is turned away
 
 
+def test_one_conversion_in_flight_per_client(client, monkeypatch):
+    """One address cannot hold the running slot and the waiting slots at once."""
+    monkeypatch.setattr(main, "_worker_argv", lambda job_dir: [sys.executable, "-c", "import time; time.sleep(2)"])
+    monkeypatch.setattr(settings, "convert_timeout_s", 10)
+    monkeypatch.setattr(settings, "rate_per_minute", 1)
+    monkeypatch.setattr(settings, "rate_burst", 2)
+    monkeypatch.setattr(settings, "trusted_proxy", True)
+    main.limits.reset()
+    pdf = (FIX / "sample.pdf").read_bytes()
+
+    def post(ip=None):
+        headers = {"fly-client-ip": ip} if ip else {}
+        return client.post("/api/convert", files={"file": ("sample.pdf", pdf)}, headers=headers)
+
+    with ThreadPoolExecutor(2) as pool:
+        first = pool.submit(post)
+        time.sleep(0.8)  # let the first one start
+        r = post()
+        assert r.status_code == 429 and r.json()["error"] == "rate_limited", r.text
+        assert int(r.headers["retry-after"]) >= 1
+        other = pool.submit(post, "203.0.113.7")  # a different address still gets in line
+        assert first.result().status_code == 422  # sleeping worker writes no result
+        assert other.result().status_code == 422
+    # The turned-away request cost no token (burst 2), and the finished one no longer counts.
+    assert post().status_code == 422
+    assert post().status_code == 429
+
+
 def test_crash_is_sanitised(client, monkeypatch):
     monkeypatch.setattr(main, "_worker_argv", lambda job_dir: [sys.executable, "-c", "import os; os.abort()"])
     r = post_file(client, FIX / "sample.pdf")

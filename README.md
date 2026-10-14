@@ -46,7 +46,9 @@ On Linux or macOS: `uv sync && uv run uvicorn app.main:app --host 127.0.0.1 --po
 - Uploads are capped before the body is read (`413`), and PDFs/PPTX files over the page or slide cap are
   rejected after a cheap inspection, before the full conversion. That inspection also rejects files that
   are not real PDFs, because MuPDF would otherwise open HTML, SVG or images through its other parsers.
-- Per-IP token buckets (per minute and per day) on the convert endpoint return `429` with `Retry-After`.
+- Per-IP token buckets (per minute and per day) on the convert endpoint return `429` with `Retry-After`,
+  and so does a second upload from an address whose previous conversion is still running, so one address
+  cannot fill the queue.
 - Error responses are generic; library error text goes to the server log with a job id only.
 - The page makes no third-party requests, sets no cookies and has no analytics.
 - Every response, including the `413`/`429`/`503`/`500` answers, carries CSP, HSTS, `nosniff`, framing and
@@ -67,6 +69,7 @@ profile; the local launcher uses the defaults.
 | `QUEUE_MAX_WAITING` / `QUEUE_WAIT_TIMEOUT_S` | 3 / 60 | 3 / 60 | queue depth and max wait |
 | `RESULT_TTL_S` / `CLEANUP_INTERVAL_S` | 900 / 60 | 900 / 60 | result retention |
 | `RATE_PER_MINUTE` / `RATE_BURST` / `RATE_DAILY` | 0 (off) / 5 / 40 | 2 / 5 / 40 | per-IP limits; `0` disables |
+| `RATE_MAX_INFLIGHT` | 1 | 1 | conversions in progress per IP while rate limiting is on; `0` = no cap |
 | `TRUSTED_PROXY` | 0 | 1 | trust `Fly-Client-IP`; Fly only, other proxies let clients set it |
 | `WORK_DIR` | `<tmp>/pdftoword` | `/tmp/pdftoword` | job folders; only folders named like a job id are ever deleted |
 | `PUBLIC` | 0 | 1 | hosted wording in the UI |
