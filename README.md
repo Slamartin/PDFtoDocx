@@ -42,6 +42,8 @@ On Linux or macOS: `uv sync && uv run uvicorn app.main:app --host 127.0.0.1 --po
 
 - Every conversion runs in its own worker process (`app/worker.py`) with a wall-clock timeout and, on
   Linux, a memory limit. A crash inside MuPDF or OpenCV kills only that job.
+- In the image the server and its workers run as an unprivileged user that can write only to the work
+  dir; the code and its virtualenv are owned by root, so an exploited worker cannot patch them.
 - One conversion runs at a time; a few requests may wait, the rest get `503` with `Retry-After`.
 - Uploads are capped before the body is read (`413`), and PDFs/PPTX files over the page or slide cap are
   rejected after a cheap inspection, before the full conversion. That inspection also rejects files that

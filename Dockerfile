@@ -17,9 +17,11 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev
 
 COPY app ./app
 
+# The code and .venv stay root-owned: the worker runs as `app` and parses untrusted files, so an exploit in
+# MuPDF/OpenCV/Pillow must not be able to patch site-packages that every later worker imports.
 RUN useradd -r -u 10001 -d /app -s /usr/sbin/nologin app \
     && mkdir -p /tmp/pdftoword \
-    && chown -R app:app /tmp/pdftoword /app
+    && chown app:app /tmp/pdftoword
 
 USER app
 
