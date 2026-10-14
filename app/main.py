@@ -39,6 +39,7 @@ STATIC = Path(__file__).parent / "static"
 SUPPORTED = {".pdf", ".pptx"}
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 GENERIC_FAIL = "The file could not be converted. It may be damaged or use features this converter does not handle."
+JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 
 _jobs: dict[str, dict] = {}
 limits = RateLimits()
@@ -86,6 +87,24 @@ queue = ConvertQueue()
 # ---------- housekeeping ----------
 
 
+def _job_dirs() -> list[Path]:
+    """Job folders this app created in the work dir (named by uuid4 hex). Nothing else in there is ever
+    deleted, so a WORK_DIR that points at a shared or existing folder cannot wipe it."""
+    try:
+        return [
+            d
+            for d in settings.work_dir.iterdir()
+            if JOB_ID_RE.match(d.name) and not d.is_symlink() and not d.is_junction() and d.is_dir()
+        ]
+    except OSError:
+        return []
+
+
+def _remove_job_dirs() -> None:
+    for d in _job_dirs():
+        shutil.rmtree(d, ignore_errors=True)
+
+
 def _cleanup_once() -> None:
     now = time.time()
     for job_id, job in list(_jobs.items()):
@@ -93,12 +112,12 @@ def _cleanup_once() -> None:
             shutil.rmtree(job["dir"], ignore_errors=True)
             _jobs.pop(job_id, None)
     orphan_age = 2 * settings.convert_timeout_s + settings.queue_wait_timeout_s
-    try:
-        for d in settings.work_dir.iterdir():
-            if d.name not in _jobs and d.is_dir() and now - d.stat().st_mtime > orphan_age:
+    for d in _job_dirs():
+        try:
+            if d.name not in _jobs and now - d.stat().st_mtime > orphan_age:
                 shutil.rmtree(d, ignore_errors=True)
-    except OSError:
-        pass
+        except OSError:
+            pass
     limits.evict()
 
 
@@ -113,15 +132,15 @@ async def _cleanup_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    shutil.rmtree(settings.work_dir, ignore_errors=True)
     settings.work_dir.mkdir(parents=True, exist_ok=True)
+    _remove_job_dirs()  # a hard kill skips the shutdown branch
     _jobs.clear()
     task = asyncio.create_task(_cleanup_loop())
     try:
         yield
     finally:
         task.cancel()
-        shutil.rmtree(settings.work_dir, ignore_errors=True)
+        _remove_job_dirs()
 
 
 app = FastAPI(title="PDF / PPTX to Word", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)

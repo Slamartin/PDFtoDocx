@@ -66,7 +66,7 @@ profile; the local launcher uses the defaults.
 | `RESULT_TTL_S` / `CLEANUP_INTERVAL_S` | 900 / 60 | 900 / 60 | result retention |
 | `RATE_PER_MINUTE` / `RATE_BURST` / `RATE_DAILY` | 0 (off) / 5 / 40 | 2 / 5 / 40 | per-IP limits; `0` disables |
 | `TRUSTED_PROXY` | 0 | 1 | trust `Fly-Client-IP` / `X-Forwarded-For` |
-| `WORK_DIR` | `<tmp>/pdftoword` | `/tmp/pdftoword` | job folders |
+| `WORK_DIR` | `<tmp>/pdftoword` | `/tmp/pdftoword` | job folders; only folders named like a job id are ever deleted |
 | `PUBLIC` | 0 | 1 | hosted wording in the UI |
 | `SOURCE_URL` | GitHub URL | | footer link |
 | `LOG_LEVEL` | `INFO` | | |

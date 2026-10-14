@@ -139,25 +139,34 @@ def test_cleanup_expires_results_and_orphans(client, monkeypatch):
     job_dir = settings.work_dir / job_id
     assert sorted(p.name for p in job_dir.iterdir()) == ["output.docx"]  # input and worker log are gone
 
-    orphan = settings.work_dir / "deadbeef"
-    orphan.mkdir()
     old = time.time() - 10 * 24 * 3600
-    os.utime(orphan, (old, old))
-    fresh = settings.work_dir / "fresh"
+    orphan = settings.work_dir / ("deadbeef" * 4)
+    foreign = settings.work_dir / "not-a-job"  # an old folder the app did not create stays
+    for d in (orphan, foreign):
+        d.mkdir()
+        os.utime(d, (old, old))
+    fresh = settings.work_dir / ("0f" * 16)
     fresh.mkdir()
 
     monkeypatch.setattr(settings, "result_ttl_s", 0)
     main._cleanup_once()
     assert client.get(f"/api/result/{job_id}").status_code == 404
-    assert not job_dir.exists() and not orphan.exists() and fresh.exists()
+    assert not job_dir.exists() and not orphan.exists() and fresh.exists() and foreign.exists()
 
 
-def test_startup_wipes_work_dir(work_dir):
-    work_dir.mkdir(parents=True)
-    (work_dir / "stale").mkdir()
+def test_startup_and_shutdown_remove_only_job_dirs(work_dir):
+    """WORK_DIR may point at an existing folder; only the job folders in it are ever deleted."""
+    stale = work_dir / ("ab" * 16)
+    stale.mkdir(parents=True)
+    keep_dir, keep_file = work_dir / "my-files", work_dir / "notes.txt"
+    keep_dir.mkdir()
+    keep_file.write_text("keep")
     with TestClient(app) as c:
         assert c.get("/healthz").json() == {"status": "ok"}
-        assert not (work_dir / "stale").exists()
+        assert not stale.exists() and keep_dir.exists() and keep_file.exists()
+        (work_dir / ("cd" * 16)).mkdir()
+    assert work_dir.exists() and keep_dir.exists() and keep_file.read_text() == "keep"
+    assert not (work_dir / ("cd" * 16)).exists()
 
 
 def test_security_headers_and_download_name(client):
