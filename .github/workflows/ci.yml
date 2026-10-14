@@ -44,9 +44,21 @@ jobs:
           docker logs pdftoword
           docker rm -f pdftoword
 
+  audit:
+    # Known vulnerabilities in the locked runtime dependencies block the deploy. Dev tools never ship, so
+    # they are left out. A vulnerability with no fix yet can be waived with `--ignore-until-fixed <ID>`.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          # `uv audit` is experimental; pin the uv the Dockerfile uses so the command cannot change under CI.
+          version: "0.12.10"
+      - run: uv audit --locked --no-dev --preview-features audit-command
+
   deploy:
-    # Runs only on main after tests and the image build pass. Needs the FLY_API_TOKEN secret.
-    needs: [test, docker]
+    # Runs only on main after tests, the image build and the audit pass. Needs the FLY_API_TOKEN secret.
+    needs: [test, docker, audit]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     concurrency: deploy-group

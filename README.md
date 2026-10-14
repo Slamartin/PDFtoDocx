@@ -105,9 +105,9 @@ fly logs
 
 `fly launch` works too, but it asks questions and may rewrite `fly.toml`.
 
-GitHub Actions (`.github/workflows/ci.yml`) runs the tests, builds and smoke-tests the image on every
-push, and deploys `main` with the `FLY_API_TOKEN` repository secret. The live app uses a deploy token
-that only covers this app and expires after a year:
+GitHub Actions (`.github/workflows/ci.yml`) runs the tests, builds and smoke-tests the image and audits the
+locked runtime dependencies (`uv audit`) on every push, and deploys `main` with the `FLY_API_TOKEN`
+repository secret. The live app uses a deploy token that only covers this app and expires after a year:
 
 ```sh
 gh secret set FLY_API_TOKEN --body "$(fly tokens create deploy -a pdftoword -x 8760h)"

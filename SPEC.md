@@ -43,7 +43,8 @@ Acceptance criteria (the product is "working" when all hold):
 - Tests: pytest 9 with FastAPI `TestClient` (httpx).
 - Runtime: Docker image on `python:3.14-slim`, non-root (code and `.venv` root-owned, only the work dir
   writable), deployed to Fly.io (`fly.toml`), built remotely.
-- CI: GitHub Actions (`.github/workflows/ci.yml`): tests, image build + container smoke test, deploy on main.
+- CI: GitHub Actions (`.github/workflows/ci.yml`): tests, image build + container smoke test, `uv audit` of the
+  locked runtime dependencies, deploy on main.
 - Licence: AGPL-3.0-only.
 
 ## Commands
