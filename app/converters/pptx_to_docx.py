@@ -643,6 +643,39 @@ def _set_paragraph_mark_size(p, size_pt: float) -> None:
         el.set(qn("w:val"), str(int(round(size_pt * 2))))
 
 
+def _url_key(url: str) -> str:
+    u = url.strip().lower()
+    for prefix in ("mailto:", "https://", "http://"):
+        if u.startswith(prefix):
+            u = u[len(prefix) :]
+            break
+    return u.rstrip("/")
+
+
+def _link_suffixes(paragraph) -> dict[int, str]:
+    """Maps the child index of each hyperlink's last run to the ' (url)' text that follows it once links are
+    flattened. PowerPoint often splits one link over several runs, so the URL is added once per link, and not
+    at all when the link text already shows it."""
+    suffixes: dict[int, str] = {}
+    current, text, last = None, "", -1
+    children = list(paragraph._p)
+    for i, child in enumerate(children + [None]):
+        address = None
+        if child is not None and etree.QName(child).localname == "r":
+            try:
+                address = _Run(child, paragraph).hyperlink.address
+            except Exception:
+                address = None
+        if address and address == current:
+            text += _Run(child, paragraph).text
+            last = i
+            continue
+        if current and _url_key(text) != _url_key(current):
+            suffixes[last] = f" ({current})"
+        current, text, last = address, (_Run(child, paragraph).text if address else ""), i
+    return suffixes
+
+
 def _emit_paragraph(
     container, paragraph, shape, ctx: Ctx, reuse=None, force_style=None, font_scale=1.0, extra_before=0, shade=None
 ):
@@ -692,18 +725,18 @@ def _emit_paragraph(
         _apply_run_style(p.add_run(""), _run_style(end, chain, ctx, font_scale))
         return p
 
-    for child in paragraph._p:
+    suffixes = _link_suffixes(paragraph)
+    for i, child in enumerate(paragraph._p):
         tag = etree.QName(child).localname
         if tag == "r":
             run = _Run(child, paragraph)
-            text = run.text
+            text = run.text + suffixes.get(i, "")
             try:
                 address = run.hyperlink.address
             except Exception:
                 address = None
             if address:
-                text = f"{text} ({address})"
-                ctx.report.note("Hyperlinks were flattened to text with the URL in brackets.")
+                ctx.report.note("Hyperlinks were flattened to text, with the URL in brackets unless the text shows it.")
             rPr = child.find(qn("a:rPr"))
             sym = rPr.find(qn("a:sym")) if rPr is not None else None
             rs = _run_style(rPr, chain, ctx, font_scale)
@@ -736,7 +769,8 @@ def _estimate_text_height(text_frame, shape, ctx: Ctx, width: int | None = None)
         size = rs.size or 18.0
         width_pt = max(50.0, (width - (ps.mar_left or 0)) / EMU_PER_PT)
         breaks = sum(1 for c in paragraph._p if etree.QName(c).localname == "br")
-        lines = max(1, math.ceil((len(paragraph.text) + 1) * size * CHAR_WIDTH / width_pt)) + breaks
+        chars = len(paragraph.text) + sum(len(s) for s in _link_suffixes(paragraph).values())
+        lines = max(1, math.ceil((chars + 1) * size * CHAR_WIDTH / width_pt)) + breaks
         line_h = ps.line_pts if ps.line_pts else size * (ps.line_pct or 1.0)
         total += lines * line_h * LINE_FACTOR
         total += (ps.before or 0) + (ps.before_pct or 0) * size + (ps.after or 0) + (ps.after_pct or 0) * size

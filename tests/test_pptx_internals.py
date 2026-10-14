@@ -40,6 +40,7 @@ from app.converters.pptx_to_docx import (
     _emit_notes,
     _emit_paragraph,
     _emit_picture,
+    _estimate_text_height,
     _first_run_rPr,
     _flatten,
     _font_scale,
@@ -563,6 +564,16 @@ class TestGapAndCursor:
         assert ctx.cursor == 200
 
 
+class TestEstimateTextHeight:
+    def test_flattened_url_counts_towards_the_height(self, deck):
+        shape = textbox(deck.slide, width=Inches(3))
+        run = shape.text_frame.paragraphs[0].add_run()
+        run.text = "docs"
+        plain = _estimate_text_height(shape.text_frame, shape, deck.ctx, Inches(3))
+        run.hyperlink.address = "https://example.com/" + "a" * 120
+        assert _estimate_text_height(shape.text_frame, shape, deck.ctx, Inches(3)) > plain
+
+
 class TestPictureBox:
     def test_small_picture_keeps_its_size(self):
         ctx = make_ctx(usable_width=1000, usable_height=1000)
@@ -833,6 +844,40 @@ class TestEmitParagraph:
         out = _emit_paragraph(deck.ctx.doc, p, shape, deck.ctx)
         assert out.text == "docs (https://example.com/x)"
         assert any("Hyperlinks" in n for n in deck.ctx.report.notes)
+
+    def test_hyperlink_split_over_runs_gets_the_url_once(self, deck):
+        # PowerPoint often splits one link into several runs; the URL follows the whole link, not every piece.
+        shape = textbox(deck.slide)
+        p = shape.text_frame.paragraphs[0]
+        p.add_run().text = "see "
+        for piece in ("do", "cs"):
+            run = p.add_run()
+            run.text = piece
+            run.hyperlink.address = "https://example.com/x"
+        p.add_run().text = " now"
+        out = _emit_paragraph(deck.ctx.doc, p, shape, deck.ctx)
+        assert out.text == "see docs (https://example.com/x) now"
+
+    def test_hyperlink_showing_its_own_url_is_not_repeated(self, deck):
+        shape = textbox(deck.slide)
+        p = shape.text_frame.paragraphs[0]
+        for piece in ("www.example.com/", "x/"):
+            run = p.add_run()
+            run.text = piece
+            run.hyperlink.address = "https://www.example.com/x"
+        out = _emit_paragraph(deck.ctx.doc, p, shape, deck.ctx)
+        assert out.text == "www.example.com/x/"
+        assert any("Hyperlinks" in n for n in deck.ctx.report.notes)
+
+    def test_adjacent_links_keep_their_own_urls(self, deck):
+        shape = textbox(deck.slide)
+        p = shape.text_frame.paragraphs[0]
+        for piece, url in (("a", "https://a.example"), ("b", "https://b.example")):
+            run = p.add_run()
+            run.text = piece
+            run.hyperlink.address = url
+        out = _emit_paragraph(deck.ctx.doc, p, shape, deck.ctx)
+        assert out.text == "a (https://a.example)b (https://b.example)"
 
     def test_line_break_becomes_a_word_break(self, deck):
         shape = textbox(deck.slide)
