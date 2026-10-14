@@ -232,3 +232,14 @@ def test_security_headers_on_guard_answers(client, monkeypatch):
     assert_headers(post_file(client, FIX / "not-a-doc.txt"), 429)
     monkeypatch.setattr(main.queue, "full", lambda: True)
     assert_headers(post_file(client, FIX / "not-a-doc.txt"), 503)
+
+
+def test_validation_errors_are_generic(client):
+    """FastAPI's default 422 lists the failing fields and echoes the submitted value back."""
+    r = client.post("/api/convert", files={"file": ("a.pdf", b"%PDF-1.4")}, data={"notes": "<b>echo-me</b>"})
+    assert r.status_code == 422
+    assert "echo-me" not in r.text, r.text
+    assert r.json() == {"error": "invalid", "detail": main.INVALID_REQUEST}
+    r = client.post("/api/convert", data={"file": "not-an-upload"})
+    assert r.status_code == 422 and "not-an-upload" not in r.text
+    assert r.headers["x-content-type-options"] == "nosniff"

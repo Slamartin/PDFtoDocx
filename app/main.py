@@ -24,6 +24,7 @@ from urllib.parse import quote
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -40,6 +41,7 @@ SUPPORTED = {".pdf", ".pptx"}
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 GENERIC_FAIL = "The file could not be converted. It may be damaged or use features this converter does not handle."
 JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
+INVALID_REQUEST = "The request is not a valid upload. Send one PDF or PPTX file in the 'file' field."
 
 _jobs: dict[str, dict] = {}
 limits = RateLimits()
@@ -148,6 +150,13 @@ app = FastAPI(title="PDF / PPTX to Word", lifespan=lifespan, docs_url=None, redo
 app.add_middleware(BodyLimitMiddleware)
 app.add_middleware(RateLimitMiddleware, limits=limits, queue_full=lambda: queue.full())
 app.add_middleware(SecurityHeadersMiddleware)
+
+
+@app.exception_handler(RequestValidationError)
+async def _invalid(request: Request, exc: RequestValidationError):
+    """FastAPI's default 422 lists the failing fields and echoes the submitted values back."""
+    log.info("invalid request on %s fields=%s", request.url.path, [e.get("loc") for e in exc.errors()])
+    return JSONResponse({"error": "invalid", "detail": INVALID_REQUEST}, status_code=422)
 
 
 @app.exception_handler(Exception)
