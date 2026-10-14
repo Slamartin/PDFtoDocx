@@ -285,4 +285,4 @@ section gets the URL and the proxy measurement) for Martin's OK.
 
 ## Checkpoint: Complete
 - [x] All tasks checked (Task 8 not needed)
-- [ ] Spec, README and vault agree with what is deployed
+- [x] Spec, README and vault agree with what is deployed (vault commit 72d9216)
