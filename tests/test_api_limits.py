@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from app import main
 from app.config import settings
+from app.guards import SECURITY_HEADERS
 from app.main import app
 from tests.conftest import post_file
 from tests.make_fixtures import FIX
@@ -128,6 +129,7 @@ def test_unexpected_error_is_generic(work_dir, monkeypatch):
     with TestClient(app, raise_server_exceptions=False) as client:
         r = post_file(client, FIX / "sample.pdf")
         assert r.status_code == 500 and r.json() == {"error": "internal", "detail": "Internal error."}
+        assert r.headers["content-security-policy"] == SECURITY_HEADERS["content-security-policy"]
         assert not any(settings.work_dir.iterdir())
 
 
@@ -181,3 +183,24 @@ def test_security_headers_and_download_name(client):
     assert 'filename="w_ird_ n_me.docx"' in cd and "filename*=UTF-8''w%C3%A9ird%3B%20n%C3%A1me.docx" in cd
     assert dl.headers["cache-control"] == "no-store"
     assert client.get("/docs").status_code == 404
+
+
+def test_security_headers_on_guard_answers(client, monkeypatch):
+    """The 413/429/503 come from middlewares outside the app; they must carry the headers as well."""
+
+    def assert_headers(r, status):
+        assert r.status_code == status, r.text
+        for name, value in SECURITY_HEADERS.items():
+            assert r.headers[name] == value, (status, name)
+
+    assert_headers(client.get("/"), 200)
+    assert "max-age=" in client.get("/").headers["strict-transport-security"]
+    monkeypatch.setattr(settings, "max_upload_bytes", 1000)
+    assert_headers(client.post("/api/convert", files={"file": ("big.pdf", b"%PDF" + b"x" * 70_000)}), 413)
+    monkeypatch.setattr(settings, "rate_per_minute", 1)
+    monkeypatch.setattr(settings, "rate_burst", 1)
+    main.limits.reset()
+    assert post_file(client, FIX / "not-a-doc.txt").status_code == 415
+    assert_headers(post_file(client, FIX / "not-a-doc.txt"), 429)
+    monkeypatch.setattr(main.queue, "full", lambda: True)
+    assert_headers(post_file(client, FIX / "not-a-doc.txt"), 503)

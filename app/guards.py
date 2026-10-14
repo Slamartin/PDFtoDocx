@@ -1,6 +1,6 @@
 """Pure ASGI middlewares that run before the upload body is parsed.
 
-Order (outermost first): RateLimitMiddleware -> BodyLimitMiddleware -> SecurityHeadersMiddleware -> app.
+Order (outermost first): SecurityHeadersMiddleware -> RateLimitMiddleware -> BodyLimitMiddleware -> app.
 """
 
 from __future__ import annotations
@@ -119,17 +119,26 @@ class BodyLimitMiddleware:
         await self.app(scope, limited_receive, rewriting_send)
 
 
+SECURITY_HEADERS = {
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
+    "x-frame-options": "DENY",
+    "content-security-policy": (
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'"
+    ),
+    # Browsers ignore HSTS on plain HTTP, so the local http://127.0.0.1 run is unaffected.
+    "strict-transport-security": "max-age=31536000",
+    "cross-origin-opener-policy": "same-origin",
+    "cross-origin-resource-policy": "same-origin",
+}
+
+
 class SecurityHeadersMiddleware:
-    HEADERS = [
-        (b"x-content-type-options", b"nosniff"),
-        (b"referrer-policy", b"no-referrer"),
-        (b"x-frame-options", b"DENY"),
-        (
-            b"content-security-policy",
-            b"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
-            b"img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'",
-        ),
-    ]
+    """Outermost, so the 413/429/503 answers of the other guards carry the headers too. Starlette's
+    ServerErrorMiddleware sits outside every user middleware, so the 500 handler adds them itself."""
+
+    HEADERS = [(k.encode(), v.encode()) for k, v in SECURITY_HEADERS.items()]
 
     def __init__(self, app):
         self.app = app

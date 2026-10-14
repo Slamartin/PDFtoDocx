@@ -49,6 +49,8 @@ On Linux or macOS: `uv sync && uv run uvicorn app.main:app --host 127.0.0.1 --po
 - Per-IP token buckets (per minute and per day) on the convert endpoint return `429` with `Retry-After`.
 - Error responses are generic; library error text goes to the server log with a job id only.
 - The page makes no third-party requests, sets no cookies and has no analytics.
+- Every response, including the `413`/`429`/`503`/`500` answers, carries CSP, HSTS, `nosniff`, framing and
+  cross-origin headers.
 
 ## Configuration
 

@@ -28,7 +28,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.guards import BodyLimitMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
+from app.guards import SECURITY_HEADERS, BodyLimitMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
 from app.ratelimit import RateLimits
 
 logging.basicConfig(level=settings.log_level, format="%(levelname)s %(name)s: %(message)s")
@@ -144,15 +144,16 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="PDF / PPTX to Word", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
-app.add_middleware(SecurityHeadersMiddleware)
+# The last one added is the outermost.
 app.add_middleware(BodyLimitMiddleware)
 app.add_middleware(RateLimitMiddleware, limits=limits, queue_full=lambda: queue.full())
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 @app.exception_handler(Exception)
 async def _unhandled(request: Request, exc: Exception):
     log.exception("unhandled error on %s %s", request.method, request.url.path)
-    return JSONResponse({"error": "internal", "detail": "Internal error."}, status_code=500)
+    return JSONResponse({"error": "internal", "detail": "Internal error."}, status_code=500, headers=SECURITY_HEADERS)
 
 
 # ---------- worker process ----------
