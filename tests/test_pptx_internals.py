@@ -250,6 +250,15 @@ def test_theme_reads_default_template(deck):
     assert theme.default_text_style is not None
 
 
+def test_xml_parser_ignores_external_entities(tmp_path):
+    """Theme XML comes from the upload; an entity must never pull a server file into the output."""
+    secret = tmp_path / "secret.txt"
+    secret.write_text("TOPSECRET", encoding="utf-8")
+    xml = f'<!DOCTYPE r [<!ENTITY x SYSTEM "{secret.as_uri()}">]><r><t>&x;</t></r>'.encode()
+    root = etree.fromstring(xml, m.XML_PARSER)
+    assert "TOPSECRET" not in etree.tostring(root, encoding="unicode")
+
+
 # ---------- bullets and spacing ----------
 
 

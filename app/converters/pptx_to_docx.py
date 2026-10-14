@@ -53,6 +53,9 @@ TITLE_TYPES = {PP_PLACEHOLDER.TITLE, PP_PLACEHOLDER.CENTER_TITLE, PP_PLACEHOLDER
 CHROME_TYPES = {PP_PLACEHOLDER.DATE, PP_PLACEHOLDER.FOOTER, PP_PLACEHOLDER.SLIDE_NUMBER}
 RASTER_EXT = {"png", "jpg", "jpeg", "gif", "bmp", "tif", "tiff"}
 SVG_BLIP = "{http://schemas.microsoft.com/office/drawing/2016/SVG/main}svgBlip"
+# Parts we parse ourselves get the same entity settings python-pptx uses, instead of relying on lxml's
+# defaults for untrusted XML, which have changed between lxml versions.
+XML_PARSER = etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False)
 
 ALIGN = {
     "l": WD_ALIGN_PARAGRAPH.LEFT,
@@ -100,7 +103,7 @@ class Theme:
         self.tx_styles: dict[str, object] = {}
         self.default_text_style = None
         try:
-            root = etree.fromstring(master.part.part_related_by(RT.THEME).blob)
+            root = etree.fromstring(master.part.part_related_by(RT.THEME).blob, XML_PARSER)
             scheme = root.find(".//" + qn("a:clrScheme"))
             if scheme is not None:
                 for child in scheme:
