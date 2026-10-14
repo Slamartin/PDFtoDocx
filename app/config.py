@@ -48,7 +48,7 @@ class Settings:
     rate_per_minute: float = 0.0
     rate_burst: int = 5
     rate_daily: int = 40
-    trusted_proxy: bool = False  # trust Fly-Client-IP / X-Forwarded-For
+    trusted_proxy: bool = False  # trust Fly-Client-IP; only safe behind the Fly proxy, which overwrites it
     # Misc
     work_dir: Path = field(default_factory=lambda: Path(tempfile.gettempdir()) / "pdftoword")
     public: bool = False  # switches UI copy from "runs on this PC" to hosted

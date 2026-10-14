@@ -115,12 +115,14 @@ class RateLimits:
 
 
 def client_ip(scope: dict) -> str:
-    """Best-effort client key. Behind the Fly proxy the socket peer is the proxy, so the
-    real address comes from headers; those are trusted only when TRUSTED_PROXY is on."""
+    """Best-effort client key. Behind the Fly proxy the socket peer is the proxy, so the real address
+    comes from Fly-Client-IP, trusted only when TRUSTED_PROXY is on. Fly overwrites that header (checked
+    live with spoofed values); other proxies pass it through from the client. X-Forwarded-For is never
+    read: its first entry is whatever the client sent."""
     ip = ""
     if settings.trusted_proxy:
         headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope.get("headers", [])}
-        ip = headers.get("fly-client-ip", "") or headers.get("x-forwarded-for", "").split(",")[0].strip()
+        ip = headers.get("fly-client-ip", "").strip()
     if not ip:
         client = scope.get("client")
         ip = client[0] if client else "unknown"

@@ -67,7 +67,7 @@ profile; the local launcher uses the defaults.
 | `QUEUE_MAX_WAITING` / `QUEUE_WAIT_TIMEOUT_S` | 3 / 60 | 3 / 60 | queue depth and max wait |
 | `RESULT_TTL_S` / `CLEANUP_INTERVAL_S` | 900 / 60 | 900 / 60 | result retention |
 | `RATE_PER_MINUTE` / `RATE_BURST` / `RATE_DAILY` | 0 (off) / 5 / 40 | 2 / 5 / 40 | per-IP limits; `0` disables |
-| `TRUSTED_PROXY` | 0 | 1 | trust `Fly-Client-IP` / `X-Forwarded-For` |
+| `TRUSTED_PROXY` | 0 | 1 | trust `Fly-Client-IP`; Fly only, other proxies let clients set it |
 | `WORK_DIR` | `<tmp>/pdftoword` | `/tmp/pdftoword` | job folders; only folders named like a job id are ever deleted |
 | `PUBLIC` | 0 | 1 | hosted wording in the UI |
 | `SOURCE_URL` | GitHub URL | | footer link |
@@ -79,6 +79,9 @@ profile; the local launcher uses the defaults.
 docker build -t pdftoword .
 docker run --rm -p 8080:8080 -e MAX_UPLOAD_BYTES=52428800 pdftoword
 ```
+
+The image trusts the `Fly-Client-IP` header to key its rate limits. Anywhere other than Fly, add
+`-e TRUSTED_PROXY=0`; otherwise clients can set that header and pick their own rate-limit bucket.
 
 ## Deploy on Fly.io
 

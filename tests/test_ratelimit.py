@@ -63,8 +63,9 @@ def test_client_ip_trust(monkeypatch):
     assert client_ip(scope) == "10.0.0.1"
     monkeypatch.setattr(settings, "trusted_proxy", True)
     assert client_ip(scope) == "203.0.113.9"
+    # X-Forwarded-For is client controlled (its first entry is spoofable), so it never picks the key.
     scope["headers"] = [(b"x-forwarded-for", b"198.51.100.1, 10.0.0.1")]
-    assert client_ip(scope) == "198.51.100.1"
+    assert client_ip(scope) == "10.0.0.1"
     scope["headers"] = [(b"fly-client-ip", b"2001:db8:abcd:1234:5555:6666:7777:8888")]
     assert client_ip(scope) == "2001:db8:abcd:1234::/64"
     scope["headers"] = [(b"fly-client-ip", b"not-an-ip")]
