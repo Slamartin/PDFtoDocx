@@ -5,14 +5,15 @@ Order (outermost first): SecurityHeadersMiddleware -> RateLimitMiddleware -> Bod
 
 from __future__ import annotations
 
+import asyncio
 import json
+import time
 from typing import Callable
 
 from app.config import settings
 from app.ratelimit import RateLimits, client_ip
 
 CONVERT_PATH = "/api/convert"
-_TOO_LARGE_FLAG = "pdftoword.body_too_large"
 
 
 def _json_bytes(payload: dict) -> bytes:
@@ -78,11 +79,14 @@ class RateLimitMiddleware:
 
 
 class BodyLimitMiddleware:
-    """Rejects oversize uploads early.
+    """Rejects oversize and overlong uploads early.
 
     1. Content-Length over the cap: answer 413 at once, nothing is read.
     2. Chunked or lying clients: count the bytes handed to the app; once over the cap, report a
        disconnect to the app (so it stops reading) and rewrite whatever it answers into a 413.
+    3. A body still incomplete after `upload_timeout_s`: same trick, answered with a 408. The Fly proxy
+       streams the body through, so a client sending a byte every few seconds would otherwise hold a
+       request slot (and its address's one in-progress conversion) for as long as it likes.
     """
 
     def __init__(self, app):
@@ -93,7 +97,7 @@ class BodyLimitMiddleware:
             await self.app(scope, receive, send)
             return
         cap = settings.body_limit_bytes
-        payload = {
+        too_large = {
             "error": "too_large",
             "detail": f"File is larger than {settings.max_upload_bytes // (1024 * 1024)} MB.",
         }
@@ -101,32 +105,41 @@ class BodyLimitMiddleware:
         headers = {k.lower(): v for k, v in scope.get("headers", [])}
         length = headers.get(b"content-length")
         if length is not None and length.isdigit() and int(length) > cap:
-            await _send_json(send, 413, payload)
+            await _send_json(send, 413, too_large)
             return
 
+        timeout = settings.upload_timeout_s
+        deadline = time.monotonic() + timeout
         seen = 0
+        body_done = False
+        rejected: tuple[int, dict] | None = None
 
         async def limited_receive():
-            nonlocal seen
-            if scope.get(_TOO_LARGE_FLAG):
+            nonlocal seen, body_done, rejected
+            if rejected:
                 return {"type": "http.disconnect"}
-            message = await receive()
+            if body_done or timeout <= 0:
+                message = await receive()
+            else:
+                try:
+                    message = await asyncio.wait_for(receive(), max(deadline - time.monotonic(), 0))
+                except TimeoutError:
+                    detail = f"The upload took longer than {int(timeout)} s. Try again on a faster connection."
+                    rejected = (408, {"error": "upload_timeout", "detail": detail})
+                    return {"type": "http.disconnect"}
             if message["type"] == "http.request":
                 seen += len(message.get("body", b""))
                 if seen > cap:
-                    scope[_TOO_LARGE_FLAG] = True
+                    rejected = (413, too_large)
                     return {"type": "http.disconnect"}
+                body_done = not message.get("more_body", False)
             return message
 
-        swallowing = False
-
         async def rewriting_send(message):
-            nonlocal swallowing
-            if scope.get(_TOO_LARGE_FLAG):
+            if rejected:
                 if message["type"] == "http.response.start":
-                    swallowing = True
-                    await _send_json(send, 413, payload)
-                return  # drop the app's own body for the oversize request
+                    await _send_json(send, *rejected)
+                return  # drop the app's own answer to the rejected request
             await send(message)
 
         await self.app(scope, limited_receive, rewriting_send)

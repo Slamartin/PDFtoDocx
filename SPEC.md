@@ -27,8 +27,9 @@ Acceptance criteria (the product is "working" when all hold):
   fonts and colours resolved through layout/master/theme, filled boxes, tables with merged cells, pictures
   with crop and rotation, and optional speaker notes.
 - Password-protected PDFs are detected, the page asks for the password, the right password converts.
-- Hosted profile: oversize uploads get 413 before the body is read, too many pages get 413 after a cheap
-  inspection, a flood from one IP gets 429 with `Retry-After`, a full queue gets 503, a hung or crashed
+- Hosted profile: oversize uploads get 413 before the body is read, an upload still incomplete after
+  180 s gets 408, too many pages get 413 after a cheap inspection, a flood from one IP gets 429 with
+  `Retry-After`, a full queue gets 503, a hung or crashed
   worker gets 504/422 and the server stays up, results disappear after the retention time, and no error
   response contains library text, tracebacks or the user's filename.
 - The page makes no third-party requests, sets no cookies, links to the AGPL source and a privacy page.

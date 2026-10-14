@@ -35,6 +35,7 @@ class Settings:
     max_upload_bytes: int = 25 * 1024 * 1024
     max_pages: int = 80  # PDF pages
     max_slides: int = 80  # PPTX slides
+    upload_timeout_s: float = 180.0  # whole request body must arrive within this; 0 = no limit
     # Worker process
     convert_timeout_s: float = 90.0
     worker_memory_mb: int = 0  # 0 = no RLIMIT in the child (POSIX only)
@@ -65,6 +66,7 @@ class Settings:
             max_upload_bytes=_int("MAX_UPLOAD_BYTES", d.max_upload_bytes),
             max_pages=_int("MAX_PAGES", d.max_pages),
             max_slides=_int("MAX_SLIDES", d.max_slides),
+            upload_timeout_s=_float("UPLOAD_TIMEOUT_S", d.upload_timeout_s),
             convert_timeout_s=_float("CONVERT_TIMEOUT_S", d.convert_timeout_s),
             worker_memory_mb=_int("WORKER_MEMORY_MB", d.worker_memory_mb),
             queue_max_waiting=_int("QUEUE_MAX_WAITING", d.queue_max_waiting),

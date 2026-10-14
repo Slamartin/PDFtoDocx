@@ -1,5 +1,8 @@
 """Public-service guards: size and page caps, rate limit, queue, timeout, crash handling, cleanup."""
 
+import asyncio
+import functools
+import json
 import os
 import sys
 import time
@@ -9,7 +12,7 @@ from fastapi.testclient import TestClient
 
 from app import main
 from app.config import settings
-from app.guards import SECURITY_HEADERS
+from app.guards import SECURITY_HEADERS, BodyLimitMiddleware
 from app.main import app
 from tests.conftest import post_file
 from tests.make_fixtures import FIX
@@ -42,6 +45,56 @@ def test_size_cap_chunked_body(client, monkeypatch):
         "/api/convert", content=body(), headers={"content-type": f"multipart/form-data; boundary={boundary}"}
     )
     assert r.status_code == 413 and r.json()["error"] == "too_large"
+
+
+async def _reading_app(scope, receive, send, work_s=0.0):
+    """Stands in for FastAPI: reads the body, answers 400 on a disconnect, otherwise 'converts' and 200."""
+    while True:
+        message = await receive()
+        if message["type"] == "http.disconnect":
+            status = 400
+            break
+        if not message.get("more_body"):
+            await asyncio.sleep(work_s)
+            status = 200
+            break
+    await send({"type": "http.response.start", "status": status, "headers": []})
+    await send({"type": "http.response.body", "body": b"app"})
+
+
+def _drive_body_limit(steps, work_s=0.0):
+    """Runs BodyLimitMiddleware with a body arriving as (delay_s, chunk, more_body) steps."""
+    sent = []
+
+    async def receive():
+        if steps:
+            delay, chunk, more = steps.pop(0)
+            await asyncio.sleep(delay)
+            return {"type": "http.request", "body": chunk, "more_body": more}
+        await asyncio.sleep(3600)
+
+    async def send(message):
+        sent.append(message)
+
+    scope = {"type": "http", "method": "POST", "path": "/api/convert", "headers": []}
+    asyncio.run(BodyLimitMiddleware(functools.partial(_reading_app, work_s=work_s))(scope, receive, send))
+    return sent
+
+
+def test_slow_upload_gets_408(monkeypatch):
+    """A body trickling in past the deadline is cut off, so it cannot hold a request slot indefinitely."""
+    monkeypatch.setattr(settings, "upload_timeout_s", 0.3)
+    t0 = time.monotonic()
+    sent = _drive_body_limit([(0, b"x" * 10, True), (0.1, b"x", True), (5, b"x", False)])
+    assert time.monotonic() - t0 < 2
+    assert sent[0]["status"] == 408 and json.loads(sent[1]["body"])["error"] == "upload_timeout"
+    assert len(sent) == 2  # the app's own 400 is dropped
+    # A body that arrives in time is untouched; once it is complete the deadline no longer applies.
+    sent = _drive_body_limit([(0, b"x", True), (0.1, b"x", False)], work_s=0.5)
+    assert sent[0]["status"] == 200 and sent[1]["body"] == b"app"
+    monkeypatch.setattr(settings, "upload_timeout_s", 0)  # 0 turns the deadline off
+    sent = _drive_body_limit([(0, b"x", True), (0.5, b"x", False)])
+    assert sent[0]["status"] == 200
 
 
 def test_client_side_limit_endpoint(client):

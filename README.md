@@ -48,6 +48,8 @@ On Linux or macOS: `uv sync && uv run uvicorn app.main:app --host 127.0.0.1 --po
 - Uploads are capped before the body is read (`413`), and PDFs/PPTX files over the page or slide cap are
   rejected after a cheap inspection, before the full conversion. That inspection also rejects files that
   are not real PDFs, because MuPDF would otherwise open HTML, SVG or images through its other parsers.
+- An upload whose body has not fully arrived after `UPLOAD_TIMEOUT_S` gets `408`. The Fly proxy streams
+  bodies through, so a client sending a byte every few seconds would otherwise hold a slot forever.
 - Per-IP token buckets (per minute and per day) on the convert endpoint return `429` with `Retry-After`,
   and so does a second upload from an address whose previous conversion is still running, so one address
   cannot fill the queue.
@@ -66,6 +68,7 @@ profile; the local launcher uses the defaults.
 | `HOST` / `PORT` | `127.0.0.1` / `8765` | `0.0.0.0` / `8080` | bind address |
 | `MAX_UPLOAD_BYTES` | 25 MB | 25 MB | upload cap |
 | `MAX_PAGES` / `MAX_SLIDES` | 80 / 80 | 80 / 80 | page and slide caps |
+| `UPLOAD_TIMEOUT_S` | 180 | 180 | the whole upload must arrive within this; `0` = no limit |
 | `CONVERT_TIMEOUT_S` | 90 | 90 | worker wall clock |
 | `WORKER_MEMORY_MB` | 0 (off) | 700 | RLIMIT for the worker, POSIX only |
 | `QUEUE_MAX_WAITING` / `QUEUE_WAIT_TIMEOUT_S` | 3 / 60 | 3 / 60 | queue depth and max wait |
