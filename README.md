@@ -33,7 +33,7 @@ On Linux or macOS: `uv sync && uv run uvicorn app.main:app --host 127.0.0.1 --po
 
 - Scanned PDFs have no text layer; those pages are kept as pictures. No OCR.
 - PDF hyperlinks, footnotes and form fields become plain text.
-- PPTX charts, SmartArt and embedded objects become a placeholder line. EMF/WMF/SVG pictures are skipped.
+- PPTX charts, SmartArt and embedded objects become a placeholder line. EMF/WMF/SVG and linked pictures are skipped.
 - PPTX animations, transitions, slide backgrounds and layout artwork (logos, footers) are not carried over.
 - Exact slide positions cannot be reproduced in a flowing Word document; vertical gaps and side-by-side columns approximate them.
 - Password-protected PDFs are supported; the page asks for the password.

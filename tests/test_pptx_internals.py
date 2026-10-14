@@ -979,6 +979,32 @@ class TestEmitPicture:
         assert ctx.doc.paragraphs[-1].text == "[Image skipped: EMF pictures are not supported]"
         assert any("EMF" in w for w in ctx.report.warnings) and ctx.report.images == 0
 
+    def test_svg_without_png_fallback_is_replaced_by_a_note(self, deck):
+        # Office can embed an SVG with no PNG fallback; python-pptx then raises instead of returning an image.
+        pic = deck.slide.shapes.add_picture(BytesIO(png_bytes()), Inches(1), Inches(1))
+        blip = pic._element.find(".//" + qn("a:blip"))
+        rId = blip.get(qn("r:embed"))
+        del blip.attrib[qn("r:embed")]
+        blip.append(
+            parse_xml(
+                f'<a:extLst {nsdecls("a", "r")}><a:ext uri="{{96DAC541-7B7A-43D3-8B79-37D633B846F1}}">'
+                f'<asvg:svgBlip xmlns:asvg="http://schemas.microsoft.com/office/drawing/2016/SVG/main" r:embed="{rId}"/>'
+                "</a:ext></a:extLst>"
+            )
+        )
+        _emit_picture(box(0, 0, 100, 100, kind="picture", shape=pic), deck.ctx.doc, deck.ctx)
+        assert deck.ctx.doc.paragraphs[-1].text == "[Image skipped: SVG pictures are not supported]"
+        assert any("SVG" in w for w in deck.ctx.report.warnings) and deck.ctx.report.images == 0
+
+    def test_linked_picture_is_replaced_by_a_note(self, deck):
+        pic = deck.slide.shapes.add_picture(BytesIO(png_bytes()), Inches(1), Inches(1))
+        blip = pic._element.find(".//" + qn("a:blip"))
+        blip.set(qn("r:link"), blip.get(qn("r:embed")))
+        del blip.attrib[qn("r:embed")]
+        _emit_picture(box(0, 0, 100, 100, kind="picture", shape=pic), deck.ctx.doc, deck.ctx)
+        assert deck.ctx.doc.paragraphs[-1].text == "[Image skipped: linked pictures are not supported]"
+        assert any("linked" in w for w in deck.ctx.report.warnings) and deck.ctx.report.images == 0
+
     def test_raster_picture_is_inserted_at_the_planned_width(self):
         ctx = make_ctx()
         shape = picture_shape(png_bytes(), 1200000, 800000)

@@ -52,6 +52,7 @@ LINE_FACTOR = 1.25  # Word line height relative to the font size, used for heigh
 TITLE_TYPES = {PP_PLACEHOLDER.TITLE, PP_PLACEHOLDER.CENTER_TITLE, PP_PLACEHOLDER.VERTICAL_TITLE}
 CHROME_TYPES = {PP_PLACEHOLDER.DATE, PP_PLACEHOLDER.FOOTER, PP_PLACEHOLDER.SLIDE_NUMBER}
 RASTER_EXT = {"png", "jpg", "jpeg", "gif", "bmp", "tif", "tiff"}
+SVG_BLIP = "{http://schemas.microsoft.com/office/drawing/2016/SVG/main}svgBlip"
 
 ALIGN = {
     "l": WD_ALIGN_PARAGRAPH.LEFT,
@@ -1055,14 +1056,30 @@ def _prepare_picture(shape):
         return out.getvalue(), w, h
 
 
+def _picture_ext(shape) -> str:
+    """Lower-case extension of the embedded image. python-pptx raises instead when nothing is embedded: an SVG
+    saved without a PNG fallback ('svg') or a picture linked to an outside file ('linked')."""
+    try:
+        return (shape.image.ext or "").lower()
+    except ValueError:
+        if shape._element.find(".//" + SVG_BLIP) is not None:
+            return "svg"
+        return "linked"
+
+
 def _emit_picture(box: Box, container, ctx: Ctx, first_paragraph=None, gap: int = 0) -> None:
     shape = box.shape
-    ext = (shape.image.ext or "").lower()
+    ext = _picture_ext(shape)
     p = first_paragraph if first_paragraph is not None else container.add_paragraph()
+    if ext == "linked":
+        p.add_run("[Image skipped: linked pictures are not supported]").italic = True
+        ctx.report.warn(f"Slide {ctx.slide_no}: a linked picture was skipped (only embedded pictures are converted).")
+        return
     if ext not in RASTER_EXT:
         p.add_run(f"[Image skipped: {ext.upper() or 'vector'} pictures are not supported]").italic = True
         ctx.report.warn(
-            f"Slide {ctx.slide_no}: a {ext.upper() or 'vector'} picture was skipped (EMF/WMF/SVG are not supported)."
+            f"Slide {ctx.slide_no}: a picture in {ext.upper() or 'vector'} format was skipped "
+            "(EMF/WMF/SVG are not supported)."
         )
         return
     try:
