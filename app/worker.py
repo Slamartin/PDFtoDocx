@@ -61,7 +61,7 @@ def _redirect_output(log_path: Path) -> None:
 
 
 def pdf_page_count(src: Path, password: str | None) -> int:
-    """Cheap check before the full conversion: password and page count only."""
+    """Cheap check before the full conversion: real PDF, password and page count only."""
     import pymupdf
 
     from app.report import CorruptFileError, PasswordError
@@ -71,6 +71,10 @@ def pdf_page_count(src: Path, password: str | None) -> int:
     except Exception as exc:
         raise CorruptFileError(f"Not a readable PDF: {exc}") from exc
     try:
+        # MuPDF sniffs the content and opens HTML, SVG, XPS, EPUB or images as well, even with
+        # filetype="pdf"; keep those parsers out of reach of uploads.
+        if not doc.is_pdf:
+            raise CorruptFileError(f"Not a PDF: {doc.metadata.get('format') if doc.metadata else 'unknown'}")
         if doc.needs_pass and (not password or not doc.authenticate(password)):
             raise PasswordError("wrong or missing password")
         return doc.page_count

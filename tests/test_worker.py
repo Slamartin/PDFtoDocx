@@ -63,3 +63,21 @@ def test_worker_zip_checks(tmp_path):
     junk.write_bytes(b"not a zip at all")
     res = worker._convert(_spec(".pptx", junk, tmp_path / "o.docx"))
     assert res["error"] == "corrupt"
+
+
+def test_worker_rejects_non_pdf_named_pdf(tmp_path):
+    """MuPDF would open these through its HTML, SVG and image handlers; only real PDFs may reach pdf2docx."""
+    import pymupdf
+
+    png = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 8, 8), False).tobytes("png")
+    samples = {
+        "html": b"<html><body><p>hello</p></body></html>",
+        "svg": b'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><text y="5">x</text></svg>',
+        "png": png,
+    }
+    for name, data in samples.items():
+        src = tmp_path / f"{name}.pdf"
+        src.write_bytes(data)
+        res = worker._convert(_spec(".pdf", src, tmp_path / "o.docx"))
+        assert res["ok"] is False and res["error"] == "corrupt", (name, res)
+        assert not (tmp_path / "o.docx").exists()

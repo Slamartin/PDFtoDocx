@@ -114,6 +114,12 @@ def test_junk_pdf_message_is_generic(client):
     assert "mupdf" not in r.text.lower() and "exception" not in r.text.lower()
 
 
+def test_html_disguised_as_pdf_is_rejected(client):
+    r = client.post("/api/convert", files={"file": ("x.pdf", b"<html><body><p>not a pdf</p></body></html>")})
+    assert r.status_code == 422 and r.json()["detail"] == main.GENERIC_FAIL
+    assert not any(settings.work_dir.iterdir())
+
+
 def test_unexpected_error_is_generic(work_dir, monkeypatch):
     def boom(*a, **k):
         raise RuntimeError("secret internals")
