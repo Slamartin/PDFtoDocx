@@ -8,6 +8,9 @@ swap_size_mb = 512
 [env]
   LOG_LEVEL = "INFO"
   SOURCE_URL = "https://github.com/Slamartin/PDFtoDocx"
+  # Rate limits key on Fly-Client-IP, which the Fly proxy overwrites. Without it every client would share
+  # the proxy's address and one bucket. Kept out of the image, where clients could spoof the header.
+  TRUSTED_PROXY = "1"
 
 [http_service]
   internal_port = 8080

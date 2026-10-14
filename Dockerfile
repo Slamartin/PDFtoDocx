@@ -25,13 +25,13 @@ RUN useradd -r -u 10001 -d /app -s /usr/sbin/nologin app \
 
 USER app
 
-# Public profile: binds to all interfaces, trusts the Fly proxy for client IPs, rate limits on.
+# Public profile: binds to all interfaces, rate limits on. TRUSTED_PROXY stays off here and is set in
+# fly.toml: outside Fly, clients could send their own Fly-Client-IP and pick their rate-limit bucket.
 ENV PATH="/app/.venv/bin:$PATH" \
     HOST=0.0.0.0 \
     PORT=8080 \
     WORK_DIR=/tmp/pdftoword \
     PUBLIC=1 \
-    TRUSTED_PROXY=1 \
     MAX_UPLOAD_BYTES=26214400 \
     MAX_PAGES=80 \
     MAX_SLIDES=80 \

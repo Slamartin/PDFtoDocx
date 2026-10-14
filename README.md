@@ -72,7 +72,7 @@ profile; the local launcher uses the defaults.
 | `RESULT_TTL_S` / `CLEANUP_INTERVAL_S` | 900 / 60 | 900 / 60 | result retention |
 | `RATE_PER_MINUTE` / `RATE_BURST` / `RATE_DAILY` | 0 (off) / 5 / 40 | 2 / 5 / 40 | per-IP limits; `0` disables |
 | `RATE_MAX_INFLIGHT` | 1 | 1 | conversions in progress per IP while rate limiting is on; `0` = no cap |
-| `TRUSTED_PROXY` | 0 | 1 | trust `Fly-Client-IP`; Fly only, other proxies let clients set it |
+| `TRUSTED_PROXY` | 0 | 0 (`fly.toml`: 1) | trust `Fly-Client-IP`; Fly only, other proxies let clients set it |
 | `WORK_DIR` | `<tmp>/pdftoword` | `/tmp/pdftoword` | job folders; only folders named like a job id are ever deleted |
 | `PUBLIC` | 0 | 1 | hosted wording in the UI |
 | `SOURCE_URL` | GitHub URL | | footer link |
@@ -85,8 +85,9 @@ docker build -t pdftoword .
 docker run --rm -p 8080:8080 -e MAX_UPLOAD_BYTES=52428800 pdftoword
 ```
 
-The image trusts the `Fly-Client-IP` header to key its rate limits. Anywhere other than Fly, add
-`-e TRUSTED_PROXY=0`; otherwise clients can set that header and pick their own rate-limit bucket.
+The image keys its rate limits on the socket address (`TRUSTED_PROXY` off). Behind your own reverse proxy
+that is the proxy's address, so all clients share one bucket: raise the limits or rate limit in the proxy.
+Do not turn `TRUSTED_PROXY` on there; only Fly's proxy overwrites `Fly-Client-IP`, so `fly.toml` sets it.
 
 ## Deploy on Fly.io
 
